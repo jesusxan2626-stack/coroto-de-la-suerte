@@ -5,6 +5,7 @@
 <title>Comprar Tickets</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<!-- SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -32,15 +33,15 @@ h1, h2 {
   justify-content: center;
   align-items: center;
   gap: 20px;
-  font-size: 28px;
+  font-size: 24px;
 }
 
 .tickets-box button {
+  font-size: 30px;
   width: 60px;
   height: 60px;
-  font-size: 30px;
-  border-radius: 10px;
   border: none;
+  border-radius: 10px;
 }
 
 .total {
@@ -61,6 +62,7 @@ input, button {
 .btn {
   background: #00c853;
   color: black;
+  font-size: 18px;
   font-weight: bold;
 }
 </style>
@@ -71,13 +73,11 @@ input, button {
 
 <div class="card">
   <h2>Selecciona la cantidad</h2>
-
   <div class="tickets-box">
     <button onclick="cambiar(-1)">-</button>
     <span id="cantidad">1</span>
     <button onclick="cambiar(1)">+</button>
   </div>
-
   <p class="total">Total: <span id="total">360</span> Bs</p>
 </div>
 
@@ -102,86 +102,86 @@ input, button {
 </div>
 
 <script>
+// ================= CONFIG =================
 const precio = 360;
+
+// 🔴 PON AQUÍ TUS DATOS REALES
+const supabaseUrl = "PEGA_AQUI_TU_URL";
+const supabaseKey = "PEGA_AQUI_TU_KEY";
+
+const supa = supabase.createClient(supabaseUrl, supabaseKey);
+
+// ================= LÓGICA =================
 let cantidad = 1;
 
-// Inicializar
-document.getElementById("cantidad").innerText = cantidad;
-document.getElementById("total").innerText = cantidad * precio;
+const cantidadSpan = document.getElementById("cantidad");
+const totalSpan = document.getElementById("total");
 
-// Botones + -
-function cambiar(valor) {
-  cantidad = cantidad + valor;
-  if (cantidad < 1) cantidad = 1;
-
-  document.getElementById("cantidad").innerText = cantidad;
-  document.getElementById("total").innerText = cantidad * precio;
+function actualizar() {
+  cantidadSpan.innerText = cantidad;
+  totalSpan.innerText = cantidad * precio;
 }
 
-// ================= SUPABASE ==================
-const supabaseUrl = "PON_AQUI_TU_URL";
-const supabaseKey = "PON_AQUI_TU_KEY";
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+function cambiar(valor) {
+  cantidad += valor;
+  if (cantidad < 1) cantidad = 1;
+  actualizar();
+}
 
-// ================= ENVIAR ==================
+actualizar();
+
+// ================= ENVIAR =================
 async function enviar() {
-
   const nombre = document.getElementById("nombre").value;
   const telefono = document.getElementById("telefono").value;
   const correo = document.getElementById("mail").value;
   const referencia = document.getElementById("referencia").value;
-  const cantidadTickets = cantidad;
-  const total = cantidad * precio;
   const comprobante = document.getElementById("comprobante").files[0];
 
   if (!nombre || !telefono || !referencia || !comprobante) {
-    alert("⚠️ Por favor completa todos los datos y sube el comprobante.");
+    alert("⚠️ Completa todos los datos y sube el comprobante.");
     return;
   }
 
-  // 1️⃣ Subir imagen
+  // Subir imagen
   const nombreArchivo = Date.now() + "_" + comprobante.name;
 
-  const { error: uploadError } = await supabase
+  const { error: uploadError } = await supa
     .storage
     .from("comprobantes")
     .upload(nombreArchivo, comprobante);
 
   if (uploadError) {
     alert("❌ Error subiendo la imagen");
-    console.log(uploadError);
     return;
   }
 
-  // 2️⃣ Obtener URL
-  const { data: publicUrlData } = supabase
+  const { data: publicUrlData } = supa
     .storage
     .from("comprobantes")
     .getPublicUrl(nombreArchivo);
 
   const imagenUrl = publicUrlData.publicUrl;
 
-  // 3️⃣ Guardar en tabla
-  const { error: insertError } = await supabase
+  // Guardar compra
+  const { error: insertError } = await supa
     .from("compras")
     .insert([{
       nombre,
       telefono,
       correo,
       referencia,
-      cantidad: cantidadTickets,
-      total: total,
+      cantidad,
+      total: cantidad * precio,
       imagen: imagenUrl,
       estado: "pendiente"
     }]);
 
   if (insertError) {
     alert("❌ Error guardando la compra");
-    console.log(insertError);
     return;
   }
 
-  // 4️⃣ Mensaje final
   alert(
     "✅ ¡Gracias por tu compra!\n\n" +
     "Hemos recibido tu comprobante correctamente.\n\n" +
@@ -190,12 +190,14 @@ async function enviar() {
     "¡Mucha suerte! 🍀"
   );
 
-  // 5️⃣ Limpiar
+  // Limpiar
   document.getElementById("nombre").value = "";
   document.getElementById("telefono").value = "";
   document.getElementById("mail").value = "";
   document.getElementById("referencia").value = "";
   document.getElementById("comprobante").value = "";
+  cantidad = 1;
+  actualizar();
 }
 </script>
 
