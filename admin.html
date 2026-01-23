@@ -72,15 +72,16 @@ img {
 </div>
 
 <script>
-// 🔴 CAMBIA ESTO
+// 🔴 TUS DATOS SUPABASE
 const SUPABASE_URL = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const SUPABASE_KEY = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+// ✅ ASÍ SE CREA EN V2
+const client = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // 🔐 CREDENCIALES DEL PANEL
 const ADMIN_USER = "ShineeVE";
-const ADMIN_PASS = "Vene1597538246"; // cambia esto luego
+const ADMIN_PASS = "Vene1597538246";
 
 function login() {
   const u = document.getElementById("user").value;
@@ -96,7 +97,7 @@ function login() {
 }
 
 async function cargarCompras() {
-  const { data, error } = await supabase
+  const { data, error } = await client
     .from("compras")
     .select("*")
     .order("id", { ascending: false });
@@ -129,12 +130,15 @@ async function cargarCompras() {
 }
 
 async function aprobar(id) {
-  await supabase.from("compras").update({ estado: "aprobado" }).eq("id", id);
+  await client.from("compras").update({ estado: "aprobado" }).eq("id", id);
   cargarCompras();
 }
 
 async function rechazar(id) {
-  await supabase.from("compras").update({ estado: "rechazado" }).eq("id", id);
+  await client.from("compras").update({ estado: "rechazado" }).eq("id", id);
   cargarCompras();
 }
 </script>
+
+</body>
+</html>
