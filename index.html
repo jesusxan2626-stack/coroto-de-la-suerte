@@ -1,82 +1,149 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Coroto de la Suerte</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background: #0b0b0b;
-      color: white;
-      text-align: center;
-    }
-    header {
-      background: #111;
-      padding: 15px;
-      font-size: 22px;
-      font-weight: bold;
-    }
-    .card {
-      background: #151515;
-      margin: 20px;
-      padding: 20px;
-      border-radius: 10px;
-    }
-    button {
-      background: #00c853;
-      border: none;
-      padding: 15px 25px;
-      border-radius: 8px;
-      font-size: 18px;
-      cursor: pointer;
-    }
-    .tickets {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 5px;
-      margin-top: 15px;
-    }
-    .ticket {
-      background: #222;
-      padding: 10px;
-      border-radius: 5px;
-      font-size: 14px;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Coroto de la Suerte</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    background: #0b0b0b;
+    color: #fff;
+}
+
+header {
+    background: #000;
+    padding: 18px;
+    text-align: center;
+    font-size: 22px;
+    font-weight: bold;
+    border-bottom: 1px solid #1f1f1f;
+}
+
+.container {
+    max-width: 500px;
+    margin: auto;
+    padding: 15px;
+}
+
+.card {
+    background: linear-gradient(180deg, #111, #0c0c0c);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 20px rgba(0,0,0,0.6);
+    border: 1px solid #1f1f1f;
+}
+
+.title {
+    font-size: 22px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.price {
+    font-size: 18px;
+    margin: 10px 0;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 12px;
+    background: #1a1a1a;
+    border-radius: 20px;
+    overflow: hidden;
+    margin: 15px 0;
+}
+
+.progress {
+    height: 100%;
+    width: 23%;
+    background: linear-gradient(90deg, #00ff6a, #00c853);
+}
+
+.stats {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    color: #ccc;
+}
+
+.button {
+    width: 100%;
+    margin-top: 15px;
+    padding: 16px;
+    background: linear-gradient(90deg, #00ff6a, #00c853);
+    border: none;
+    border-radius: 12px;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.button:active {
+    transform: scale(0.98);
+}
+
+.badge {
+    display: inline-block;
+    background: #00c853;
+    color: #000;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.footer {
+    text-align: center;
+    color: #666;
+    font-size: 13px;
+    margin-top: 30px;
+}
+</style>
 </head>
+
 <body>
 
 <header>🍀 Coroto de la Suerte</header>
 
-<div class="card">
-  <h2>🎁 Rifa activa</h2>
-  <p>Precio por ticket: <b>360 Bs</b></p>
-  <p>Total tickets: <b>10.000</b></p>
-  <p>Estado: <b id="estado">Disponible</b></p>
-  <br>
-  <button onclick="comprar()">Comprar tickets</button>
-</div>
+<div class="container">
 
-<div class="card">
-  <h3>🎟️ Tickets generados</h3>
-  <div class="tickets" id="listaTickets"></div>
-</div>
+    <div class="card">
+        <div class="title">🎁 Gran Rifa Activa</div>
+        <span class="badge">ACTIVA</span>
 
-<script>
-function comprar() {
-  const cantidad = 5;
-  const contenedor = document.getElementById("listaTickets");
-  for (let i = 0; i < cantidad; i++) {
-    const num = Math.floor(1000 + Math.random() * 9000);
-    const div = document.createElement("div");
-    div.className = "ticket";
-    div.textContent = num;
-    contenedor.appendChild(div);
-  }
-}
-</script>
+        <div class="price">💰 Precio por ticket: <b>360 Bs</b></div>
+
+        <div class="progress-bar">
+            <div class="progress"></div>
+        </div>
+
+        <div class="stats">
+            <div>🎟 Vendidos: 2300</div>
+            <div>📦 Total: 10.000</div>
+        </div>
+
+        <button class="button">Comprar Tickets</button>
+    </div>
+
+    <div class="card">
+        <div class="title">🎟️ Mis Tickets</div>
+        <p style="color:#aaa;">Aún no has comprado tickets.</p>
+    </div>
+
+    <div class="card">
+        <div class="title">💳 Métodos de pago</div>
+        <p style="color:#aaa;">Pago móvil • Binance • Zinli • Efectivo</p>
+    </div>
+
+    <div class="footer">
+        Plataforma de rifas online • 2026
+    </div>
+
+</div>
 
 </body>
 </html>
