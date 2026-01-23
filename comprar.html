@@ -120,12 +120,40 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
 });
-</script>
 
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script>
+const precio = 360;
+let cantidad = 1;
+
+// cuando carga la página
+document.addEventListener("DOMContentLoaded", function () {
+  const cantidadSpan = document.getElementById("cantidad");
+  const totalSpan = document.getElementById("total");
+
+  cantidadSpan.innerText = cantidad;
+  totalSpan.innerText = cantidad * precio;
+});
+
+// esta función la usan los botones + y -
+function cambiar(valor) {
+  cantidad = cantidad + valor;
+
+  if (cantidad < 1) {
+    cantidad = 1;
+  }
+
+  document.getElementById("cantidad").innerText = cantidad;
+  document.getElementById("total").innerText = cantidad * precio;
+}
+
+// SUPABASE
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
+// BOTÓN ENVIAR
 async function enviar() {
   alert("Luego conectamos esto con Supabase (ya lo tienes listo)");
 }
