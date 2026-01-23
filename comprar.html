@@ -5,8 +5,6 @@
 <title>Comprar Tickets</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <style>
 body {
   font-family: Arial, sans-serif;
@@ -27,22 +25,6 @@ h1, h2 {
   text-align: center;
 }
 
-.tickets-box {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-  font-size: 28px;
-}
-
-.tickets-box button {
-  font-size: 30px;
-  width: 60px;
-  height: 60px;
-  border: none;
-  border-radius: 10px;
-}
-
 .total {
   text-align: center;
   font-size: 28px;
@@ -55,6 +37,7 @@ input, button {
   margin-top: 10px;
   border-radius: 8px;
   border: none;
+  font-size: 18px;
 }
 
 .btn {
@@ -70,12 +53,16 @@ input, button {
 <h1>🎟 Comprar Tickets</h1>
 
 <div class="card">
-  <h2>Selecciona la cantidad</h2>
-  <div class="tickets-box">
-    <button onclick="cambiar(-1)">-</button>
-    <span id="cantidad">1</span>
-    <button onclick="cambiar(1)">+</button>
-  </div>
+  <h2>Selecciona la cantidad de tickets</h2>
+
+  <input 
+    id="cantidad" 
+    type="number" 
+    min="1" 
+    value="1"
+    oninput="calcular()"
+  >
+
   <p class="total">Total: <span id="total">360</span> Bs</p>
 </div>
 
@@ -89,46 +76,34 @@ input, button {
 <div class="card">
   <h2>📤 Enviar comprobante</h2>
 
-  <input id="nombre" placeholder="Nombre completo">
-  <input id="telefono" placeholder="Teléfono">
-  <input id="mail" placeholder="Correo">
-  <input id="referencia" placeholder="Últimos 4 dígitos">
+  <input placeholder="Nombre completo">
+  <input placeholder="Teléfono">
+  <input placeholder="Correo">
+  <input placeholder="Últimos 4 dígitos de referencia">
 
-  <input id="comprobante" type="file" accept="image/*">
+  <input type="file" accept="image/*">
 
   <button class="btn" onclick="enviar()">Enviar comprobante</button>
 </div>
 
 <script>
 const precio = 360;
-let cantidad = 1;
 
-// Cuando carga la página
-document.addEventListener("DOMContentLoaded", function () {
-  document.getElementById("cantidad").innerText = cantidad;
-  document.getElementById("total").innerText = cantidad * precio;
-});
-
-// Botones + y -
-function cambiar(valor) {
-  cantidad = cantidad + valor;
+function calcular() {
+  let cantidad = document.getElementById("cantidad").value;
 
   if (cantidad < 1) {
     cantidad = 1;
+    document.getElementById("cantidad").value = 1;
   }
 
-  document.getElementById("cantidad").innerText = cantidad;
   document.getElementById("total").innerText = cantidad * precio;
 }
 
-// SUPABASE (luego lo usamos)
-const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
-const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+// Inicializar
+calcular();
 
-// BOTÓN ENVIAR
-async function enviar() {
-
+function enviar() {
   alert(
     "✅ ¡Gracias por tu compra!\n\n" +
     "Hemos recibido tu comprobante correctamente.\n\n" +
@@ -136,7 +111,6 @@ async function enviar() {
     "Podrás consultarlos en nuestro verificador de tickets usando tu cédula.\n\n" +
     "¡Mucha suerte! 🍀"
   );
-
 }
 </script>
 
