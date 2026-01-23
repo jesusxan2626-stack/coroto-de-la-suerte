@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Panel Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #0b1a33;
+  color: white;
+  margin: 0;
+  padding: 15px;
+}
+
+h1 {
+  text-align: center;
+}
+
+.card {
+  background: #122654;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+img {
+  max-width: 100%;
+  border-radius: 10px;
+}
+
+button {
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  margin-top: 5px;
+  width: 100%;
+}
+
+.aprobar {
+  background: #00c853;
+  color: black;
+}
+
+.rechazar {
+  background: #d50000;
+  color: white;
+}
+</style>
+</head>
+<body>
+
+<h1>🛠️ Panel de Administrador</h1>
+
+<div id="lista"></div>
+
+<script>
+// 🔴 PEGA AQUÍ TU URL Y TU KEY
+const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
+const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
+
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+// Cargar compras
+async function cargarCompras() {
+  const { data, error } = await supabase
+    .from("compras")
+    .select("*")
+    .order("id", { ascending: false });
+
+  if (error) {
+    alert("Error cargando compras");
+    console.log(error);
+    return;
+  }
+
+  const contenedor = document.getElementById("lista");
+  contenedor.innerHTML = "";
+
+  data.forEach(compra => {
+    const div = document.createElement("div");
+    div.className = "card";
+
+    div.innerHTML = `
+      <p><b>Nombre:</b> ${compra.nombre}</p>
+      <p><b>Teléfono:</b> ${compra.telefono}</p>
+      <p><b>Referencia:</b> ${compra.referencia}</p>
+      <p><b>Cantidad:</b> ${compra.cantidad}</p>
+      <p><b>Total:</b> ${compra.total} Bs</p>
+      <p><b>Estado:</b> ${compra.estado}</p>
+
+      <img src="${compra.imagen}" />
+
+      <button class="aprobar" onclick="aprobar(${compra.id})">✅ Aprobar</button>
+      <button class="rechazar" onclick="rechazar(${compra.id})">❌ Rechazar</button>
+    `;
+
+    contenedor.appendChild(div);
+  });
+}
+
+// Aprobar
+async function aprobar(id) {
+  await supabase
+    .from("compras")
+    .update({ estado: "aprobado" })
+    .eq("id", id);
+
+  cargarCompras();
+}
+
+// Rechazar
+async function rechazar(id) {
+  await supabase
+    .from("compras")
+    .update({ estado: "rechazado" })
+    .eq("id", id);
+
+  cargarCompras();
+}
+
+// Iniciar
+cargarCompras();
+</script>
+
+</body>
+</html>
