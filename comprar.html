@@ -5,6 +5,8 @@
 <title>Comprar Tickets</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 body {
   font-family: Arial, sans-serif;
@@ -25,6 +27,22 @@ h1, h2 {
   text-align: center;
 }
 
+.tickets-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  font-size: 28px;
+}
+
+.tickets-box button {
+  width: 60px;
+  height: 60px;
+  font-size: 30px;
+  border-radius: 10px;
+  border: none;
+}
+
 .total {
   text-align: center;
   font-size: 28px;
@@ -43,7 +61,6 @@ input, button {
 .btn {
   background: #00c853;
   color: black;
-  font-size: 18px;
   font-weight: bold;
 }
 </style>
@@ -53,15 +70,13 @@ input, button {
 <h1>🎟 Comprar Tickets</h1>
 
 <div class="card">
-  <h2>Selecciona la cantidad de tickets</h2>
+  <h2>Selecciona la cantidad</h2>
 
-  <input 
-    id="cantidad" 
-    type="number" 
-    min="1" 
-    value="1"
-    oninput="calcular()"
-  >
+  <div class="tickets-box">
+    <button onclick="cambiar(-1)">-</button>
+    <span id="cantidad">1</span>
+    <button onclick="cambiar(1)">+</button>
+  </div>
 
   <p class="total">Total: <span id="total">360</span> Bs</p>
 </div>
@@ -76,34 +91,97 @@ input, button {
 <div class="card">
   <h2>📤 Enviar comprobante</h2>
 
-  <input placeholder="Nombre completo">
-  <input placeholder="Teléfono">
-  <input placeholder="Correo">
-  <input placeholder="Últimos 4 dígitos de referencia">
+  <input id="nombre" placeholder="Nombre completo">
+  <input id="telefono" placeholder="Teléfono">
+  <input id="mail" placeholder="Correo">
+  <input id="referencia" placeholder="Últimos 4 dígitos">
 
-  <input type="file" accept="image/*">
+  <input id="comprobante" type="file" accept="image/*">
 
   <button class="btn" onclick="enviar()">Enviar comprobante</button>
 </div>
 
 <script>
 const precio = 360;
+let cantidad = 1;
 
-function calcular() {
-  let cantidad = document.getElementById("cantidad").value;
+// Inicializar
+document.getElementById("cantidad").innerText = cantidad;
+document.getElementById("total").innerText = cantidad * precio;
 
-  if (cantidad < 1) {
-    cantidad = 1;
-    document.getElementById("cantidad").value = 1;
-  }
+// Botones + -
+function cambiar(valor) {
+  cantidad = cantidad + valor;
+  if (cantidad < 1) cantidad = 1;
 
+  document.getElementById("cantidad").innerText = cantidad;
   document.getElementById("total").innerText = cantidad * precio;
 }
 
-// Inicializar
-calcular();
+// ================= SUPABASE ==================
+const supabaseUrl = "PON_AQUI_TU_URL";
+const supabaseKey = "PON_AQUI_TU_KEY";
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-function enviar() {
+// ================= ENVIAR ==================
+async function enviar() {
+
+  const nombre = document.getElementById("nombre").value;
+  const telefono = document.getElementById("telefono").value;
+  const correo = document.getElementById("mail").value;
+  const referencia = document.getElementById("referencia").value;
+  const cantidadTickets = cantidad;
+  const total = cantidad * precio;
+  const comprobante = document.getElementById("comprobante").files[0];
+
+  if (!nombre || !telefono || !referencia || !comprobante) {
+    alert("⚠️ Por favor completa todos los datos y sube el comprobante.");
+    return;
+  }
+
+  // 1️⃣ Subir imagen
+  const nombreArchivo = Date.now() + "_" + comprobante.name;
+
+  const { error: uploadError } = await supabase
+    .storage
+    .from("comprobantes")
+    .upload(nombreArchivo, comprobante);
+
+  if (uploadError) {
+    alert("❌ Error subiendo la imagen");
+    console.log(uploadError);
+    return;
+  }
+
+  // 2️⃣ Obtener URL
+  const { data: publicUrlData } = supabase
+    .storage
+    .from("comprobantes")
+    .getPublicUrl(nombreArchivo);
+
+  const imagenUrl = publicUrlData.publicUrl;
+
+  // 3️⃣ Guardar en tabla
+  const { error: insertError } = await supabase
+    .from("compras")
+    .insert([{
+      nombre,
+      telefono,
+      correo,
+      referencia,
+      cantidad: cantidadTickets,
+      total: total,
+      imagen: imagenUrl,
+      estado: "pendiente"
+    }]);
+
+  if (insertError) {
+    alert("❌ Error guardando la compra");
+    console.log(insertError);
+    return;
+  }
+
+  // 4️⃣ Mensaje final
   alert(
     "✅ ¡Gracias por tu compra!\n\n" +
     "Hemos recibido tu comprobante correctamente.\n\n" +
@@ -111,6 +189,13 @@ function enviar() {
     "Podrás consultarlos en nuestro verificador de tickets usando tu cédula.\n\n" +
     "¡Mucha suerte! 🍀"
   );
+
+  // 5️⃣ Limpiar
+  document.getElementById("nombre").value = "";
+  document.getElementById("telefono").value = "";
+  document.getElementById("mail").value = "";
+  document.getElementById("referencia").value = "";
+  document.getElementById("comprobante").value = "";
 }
 </script>
 
