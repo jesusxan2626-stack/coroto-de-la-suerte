@@ -126,7 +126,7 @@ header {
         </div>
 
         <div class="stats">
-            <div>🎟 Vendidos: 2300</div>
+            <div>🎟 Vendidos: 300</div>
             <div>📦 Total: 10.000</div>
         </div>
 
@@ -140,6 +140,19 @@ header {
     </div>
 
     <!-- METODOS DE PAGO -->
+    <!-- FORMULARIO DE ENVIO DE COMPROBANTE -->
+<div class="card">
+  <div class="title">📤 Enviar comprobante</div>
+
+  <input id="nombre" placeholder="Nombre completo">
+  <input id="telefono" placeholder="Teléfono">
+  <input id="mail" placeholder="Correo">
+  <input id="referencia" placeholder="Últimos 4 dígitos del pago">
+
+  <input id="comprobante" type="file" accept="image/*">
+
+  <button class="btn" onclick="enviarComprobante()">Enviar comprobante</button>
+</div>
     <div class="card">
         <div class="title">💳 Métodos de pago</div>
         <div>Pago móvil · Binance · Zinli · Efectivo</div>
@@ -151,8 +164,62 @@ header {
 
 </div>
     
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <script>
-alert("El script ya está funcionando correctamente");
+const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
+const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+async function enviarComprobante() {
+  const nombre = document.getElementById("nombre").value;
+  const telefono = document.getElementById("telefono").value;
+  const mail = document.getElementById("mail").value;
+  const referencia = document.getElementById("referencia").value;
+  const fileInput = document.getElementById("comprobante");
+  const file = fileInput.files[0];
+
+  if (!file) {
+    alert("Debes subir el comprobante");
+    return;
+  }
+
+  const fileName = Date.now() + "_" + file.name;
+
+  const { error: uploadError } = await supabase.storage
+    .from("comprobantes")
+    .upload(fileName, file);
+
+  if (uploadError) {
+    alert("Error subiendo imagen");
+    console.log(uploadError);
+    return;
+  }
+
+  const { data } = supabase.storage
+    .from("comprobantes")
+    .getPublicUrl(fileName);
+
+  const imageUrl = data.publicUrl;
+
+  const { error } = await supabase.from("raffles").insert([
+    {
+      nombre,
+      telefono,
+      mail,
+      referencia,
+      comprobante: imageUrl,
+      estado: "pendiente"
+    }
+  ]);
+
+  if (error) {
+    alert("Error guardando datos");
+    console.log(error);
+  } else {
+    alert("✅ Comprobante enviado correctamente");
+  }
+}
 </script>
     
 </body>
