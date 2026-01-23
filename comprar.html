@@ -1,28 +1,123 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <title>Comprar Tickets</title>
+<meta charset="UTF-8">
+<title>Comprar Tickets</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #0b1a33;
+  color: white;
+  margin: 0;
+  padding: 15px;
+}
+
+.card {
+  background: #122654;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+h1, h2 {
+  text-align: center;
+}
+
+.tickets-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  font-size: 24px;
+}
+
+.tickets-box button {
+  font-size: 30px;
+  width: 60px;
+  height: 60px;
+  border: none;
+  border-radius: 10px;
+}
+
+.total {
+  text-align: center;
+  font-size: 28px;
+  color: #00ff88;
+}
+
+input, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: none;
+}
+
+.btn {
+  background: #00c853;
+  color: black;
+  font-size: 18px;
+  font-weight: bold;
+}
+</style>
 </head>
 <body>
 
-  <h1>💳 Datos de pago</h1>
+<h1>🎟 Comprar Tickets</h1>
 
+<div class="card">
+  <h2>Selecciona la cantidad</h2>
+  <div class="tickets-box">
+    <button onclick="cambiar(-1)">➖</button>
+    <span id="cantidad">1</span>
+    <button onclick="cambiar(1)">➕</button>
+  </div>
+  <p class="total">Total: <span id="total">360</span> Bs</p>
+</div>
+
+<div class="card">
+  <h2>🏦 Datos de pago</h2>
   <p><b>Pago móvil:</b> 04264463109</p>
   <p><b>Cédula:</b> V-3.690.403</p>
-  <p><b>Banco:</b> Banco Venezuela 0102</p>
+  <p><b>Banco:</b> Banco Venezuela</p>
+</div>
 
-  <hr>
-
+<div class="card">
   <h2>📤 Enviar comprobante</h2>
 
-  <input id="nombre" placeholder="Nombre"><br><br>
-  <input id="telefono" placeholder="Teléfono"><br><br>
-  <input id="mail" placeholder="Correo"><br><br>
-  <input id="referencia" placeholder="Últimos 4 dígitos"><br><br>
-  <input id="comprobante" type="file" accept="image/*"><br><br>
+  <input id="nombre" placeholder="Nombre completo">
+  <input id="telefono" placeholder="Teléfono">
+  <input id="mail" placeholder="Correo">
+  <input id="referencia" placeholder="Últimos 4 dígitos">
 
-  <button>Enviar comprobante</button>
+  <input id="comprobante" type="file" accept="image/*">
+
+  <button class="btn" onclick="enviar()">Enviar comprobante</button>
+</div>
+
+<script>
+const precio = 360;
+let cantidad = 1;
+
+function cambiar(valor) {
+  cantidad += valor;
+  if (cantidad < 1) cantidad = 1;
+  document.getElementById("cantidad").innerText = cantidad;
+  document.getElementById("total").innerText = cantidad * precio;
+}
+
+const supabaseUrl = "PEGA_AQUI_TU_URL";
+const supabaseKey = "PEGA_AQUI_TU_KEY";
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+async function enviar() {
+  alert("Luego conectamos esto con Supabase (ya lo tienes listo)");
+}
+</script>
 
 </body>
 </html>
