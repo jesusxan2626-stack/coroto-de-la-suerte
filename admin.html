@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Panel Admin</title>
+<title>Panel Admin - Coroto</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -10,62 +10,91 @@
 <style>
 body {
   font-family: Arial, sans-serif;
-  background: #0b1a33;
+  background: #08162f;
   color: white;
   margin: 0;
-  padding: 15px;
+  padding: 20px;
 }
 
 h1 {
   text-align: center;
 }
 
-.card {
-  background: #122654;
+.box {
+  max-width: 500px;
+  margin: auto;
+  background: #0f2147;
+  padding: 20px;
   border-radius: 12px;
+}
+
+input, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+}
+
+button {
+  background: #00c853;
+  font-weight: bold;
+}
+
+.card {
+  background: #132a57;
   padding: 15px;
+  border-radius: 10px;
   margin-bottom: 15px;
 }
 
 img {
-  max-width: 100%;
-  border-radius: 10px;
-}
-
-button {
-  padding: 10px;
-  border: none;
-  border-radius: 8px;
-  font-size: 16px;
-  margin-top: 5px;
   width: 100%;
-}
-
-.aprobar {
-  background: #00c853;
-  color: black;
-}
-
-.rechazar {
-  background: #d50000;
-  color: white;
+  border-radius: 8px;
 }
 </style>
 </head>
 <body>
 
-<h1>🛠️ Panel de Administrador</h1>
+<h1>🛠 Panel de Administrador</h1>
 
-<div id="lista"></div>
+<div class="box" id="loginBox">
+  <h2>🔐 Iniciar sesión</h2>
+  <input id="user" placeholder="Usuario">
+  <input id="pass" type="password" placeholder="Contraseña">
+  <button onclick="login()">Entrar</button>
+</div>
+
+<div class="box" id="panel" style="display:none;">
+  <h2>📋 Compras</h2>
+  <div id="lista"></div>
+</div>
 
 <script>
-// 🔴 PEGA AQUÍ TU URL Y TU KEY
-const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
-const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
+// 🔴 CAMBIA ESTO
+const SUPABASE_URL = "https://hedwnykwnhrbnwfohntr.supabase.co";
+const SUPABASE_KEY = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Cargar compras
+// 🔐 CREDENCIALES DEL PANEL
+const ADMIN_USER = "ShineeVE";
+const ADMIN_PASS = "Vene1597538246"; // cambia esto luego
+
+function login() {
+  const u = document.getElementById("user").value;
+  const p = document.getElementById("pass").value;
+
+  if (u === ADMIN_USER && p === ADMIN_PASS) {
+    document.getElementById("loginBox").style.display = "none";
+    document.getElementById("panel").style.display = "block";
+    cargarCompras();
+  } else {
+    alert("❌ Usuario o contraseña incorrectos");
+  }
+}
+
 async function cargarCompras() {
   const { data, error } = await supabase
     .from("compras")
@@ -78,54 +107,34 @@ async function cargarCompras() {
     return;
   }
 
-  const contenedor = document.getElementById("lista");
-  contenedor.innerHTML = "";
+  const lista = document.getElementById("lista");
+  lista.innerHTML = "";
 
-  data.forEach(compra => {
-    const div = document.createElement("div");
-    div.className = "card";
-
-    div.innerHTML = `
-      <p><b>Nombre:</b> ${compra.nombre}</p>
-      <p><b>Teléfono:</b> ${compra.telefono}</p>
-      <p><b>Referencia:</b> ${compra.referencia}</p>
-      <p><b>Cantidad:</b> ${compra.cantidad}</p>
-      <p><b>Total:</b> ${compra.total} Bs</p>
-      <p><b>Estado:</b> ${compra.estado}</p>
-
-      <img src="${compra.imagen}" />
-
-      <button class="aprobar" onclick="aprobar(${compra.id})">✅ Aprobar</button>
-      <button class="rechazar" onclick="rechazar(${compra.id})">❌ Rechazar</button>
+  data.forEach(c => {
+    lista.innerHTML += `
+      <div class="card">
+        <p><b>Nombre:</b> ${c.nombre}</p>
+        <p><b>Teléfono:</b> ${c.telefono}</p>
+        <p><b>Referencia:</b> ${c.referencia}</p>
+        <p><b>Cantidad:</b> ${c.cantidad}</p>
+        <p><b>Total:</b> ${c.total} Bs</p>
+        <p><b>Estado:</b> ${c.estado}</p>
+        <img src="${c.imagen}">
+        <br><br>
+        <button onclick="aprobar(${c.id})">✅ Aprobar</button>
+        <button onclick="rechazar(${c.id})">❌ Rechazar</button>
+      </div>
     `;
-
-    contenedor.appendChild(div);
   });
 }
 
-// Aprobar
 async function aprobar(id) {
-  await supabase
-    .from("compras")
-    .update({ estado: "aprobado" })
-    .eq("id", id);
-
+  await supabase.from("compras").update({ estado: "aprobado" }).eq("id", id);
   cargarCompras();
 }
 
-// Rechazar
 async function rechazar(id) {
-  await supabase
-    .from("compras")
-    .update({ estado: "rechazado" })
-    .eq("id", id);
-
+  await supabase.from("compras").update({ estado: "rechazado" }).eq("id", id);
   cargarCompras();
 }
-
-// Iniciar
-cargarCompras();
 </script>
-
-</body>
-</html>
