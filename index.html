@@ -67,13 +67,13 @@ header {
 
 .progress-bar {
     background: linear-gradient(90deg, #00ff6a, #00c853);
-    width: 23%;
+    width: 0%;
     height: 100%;
+    transition: width 0.5s;
 }
 
 .stats {
-    display: flex;
-    justify-content: space-between;
+    text-align: center;
     font-size: 14px;
     margin-bottom: 15px;
 }
@@ -90,11 +90,6 @@ header {
     font-weight: bold;
     border: none;
     text-decoration: none;
-}
-
-.section-title {
-    font-weight: bold;
-    margin-bottom: 5px;
 }
 
 .footer {
@@ -122,26 +117,16 @@ header {
         <div class="price">💰 Precio por ticket: <b>360,00 Bs</b></div>
 
         <div class="progress-container">
-            <div class="progress-bar"></div>
+            <div class="progress-bar" id="progressBar"></div>
         </div>
 
         <div class="stats">
-            <div>🎟 Vendidos: 30</div>
+            <div id="porcentajeTexto">Cargando progreso...</div>
         </div>
 
         <a class="btn" href="comprar.html">COMPRAR TICKETS</a>
     </div>
 
-    <!-- MIS TICKETS -->
-    <div class="card">
-        <div class="title">🎫 Mis Tickets</div>
-        <div>Aún no has comprado tickets.</div>
-    </div>
-
-    <!-- METODOS DE PAGO -->
-    <!-- FORMULARIO DE ENVIO DE COMPROBANTE -->
-<div class="card">
-  
     <div class="card">
         <div class="title">💳 Métodos de pago</div>
         <div>Pago móvil · Binance · Zinli · Efectivo</div>
@@ -152,64 +137,47 @@ header {
     </div>
 
 </div>
-    
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script>
+// ================= CONFIG =================
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-async function enviarComprobante() {
-  const nombre = document.getElementById("nombre").value;
-  const telefono = document.getElementById("telefono").value;
-  const mail = document.getElementById("mail").value;
-  const referencia = document.getElementById("referencia").value;
-  const fileInput = document.getElementById("comprobante");
-  const file = fileInput.files[0];
+// TOTAL DE TICKETS DEL SORTEO
+const TOTAL_TICKETS = 10000;
 
-  if (!file) {
-    alert("Debes subir el comprobante");
-    return;
-  }
-
-  const fileName = Date.now() + "_" + file.name;
-
-  const { error: uploadError } = await supabase.storage
-    .from("comprobantes")
-    .upload(fileName, file);
-
-  if (uploadError) {
-    alert("Error subiendo imagen");
-    console.log(uploadError);
-    return;
-  }
-
-  const { data } = supabase.storage
-    .from("comprobantes")
-    .getPublicUrl(fileName);
-
-  const imageUrl = data.publicUrl;
-
-  const { error } = await supabase.from("raffles").insert([
-    {
-      nombre,
-      telefono,
-      mail,
-      referencia,
-      comprobante: imageUrl,
-      estado: "pendiente"
-    }
-  ]);
+// ================= CARGAR PROGRESO =================
+async function cargarProgreso() {
+  const { data, error } = await supabase
+    .from("purchases")
+    .select("quantity");
 
   if (error) {
-    alert("Error guardando datos");
-    console.log(error);
-  } else {
-    alert("✅ Comprobante enviado correctamente");
+    console.error(error);
+    document.getElementById("porcentajeTexto").innerText = "Error cargando progreso";
+    return;
   }
+
+  let vendidos = 0;
+
+  data.forEach(row => {
+    vendidos += Number(row.quantity || 1);
+  });
+
+  let porcentaje = (vendidos / TOTAL_TICKETS) * 100;
+  if (porcentaje > 100) porcentaje = 100;
+
+  porcentaje = porcentaje.toFixed(1);
+
+  document.getElementById("progressBar").style.width = porcentaje + "%";
+  document.getElementById("porcentajeTexto").innerText = porcentaje + "% del sorteo completado";
 }
+
+cargarProgreso();
 </script>
-    
+
 </body>
 </html>
