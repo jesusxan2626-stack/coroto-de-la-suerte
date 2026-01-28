@@ -5,41 +5,35 @@
 <title>Coroto de la Suerte</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 <style>
 body {
     margin: 0;
     font-family: Arial, Helvetica, sans-serif;
-    background: #f2f4f8;
-    color: #111;
+    background: #0b1a33;
+    color: white;
 }
 
 header {
-    background: white;
+    background: #08162f;
     padding: 16px;
     text-align: center;
     font-weight: bold;
     font-size: 22px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }
 
 .container {
     max-width: 420px;
     margin: auto;
     padding: 15px;
-    animation: fadeIn 0.8s ease;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(15px); }
-    to { opacity: 1; transform: translateY(0); }
 }
 
 .card {
-    background: white;
+    background: #122654;
     border-radius: 14px;
     padding: 18px;
     margin-bottom: 15px;
-    box-shadow: 0 5px 20px rgba(0,0,0,0.08);
 }
 
 .title {
@@ -48,37 +42,16 @@ header {
     margin-bottom: 10px;
 }
 
-.badge {
-    display: inline-block;
-    background: #00c853;
-    color: white;
-    padding: 4px 10px;
-    border-radius: 20px;
-    font-size: 12px;
-    margin-bottom: 10px;
-}
-
 .price {
     font-size: 18px;
     margin-bottom: 10px;
 }
 
-.prize-img {
-    width: 100%;
-    border-radius: 12px;
-    margin-bottom: 12px;
-    transition: transform 0.4s ease;
-}
-
-.prize-img:hover {
-    transform: scale(1.05);
-}
-
 .progress-container {
-    background: #e5e7eb;
+    background: #1c2f5a;
     border-radius: 20px;
     overflow: hidden;
-    height: 14px;
+    height: 18px;
     margin: 10px 0;
 }
 
@@ -86,13 +59,7 @@ header {
     background: linear-gradient(90deg, #00ff6a, #00c853);
     width: 0%;
     height: 100%;
-    transition: width 1s ease;
-}
-
-.stats {
-    text-align: center;
-    font-size: 14px;
-    margin-bottom: 15px;
+    transition: width 0.6s ease;
 }
 
 .btn {
@@ -107,17 +74,25 @@ header {
     font-weight: bold;
     border: none;
     text-decoration: none;
-    transition: transform 0.15s ease;
 }
 
-.btn:active {
-    transform: scale(0.97);
+.premio {
+    width: 100%;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    animation: flotar 3s ease-in-out infinite;
+}
+
+@keyframes flotar {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-8px); }
+    100% { transform: translateY(0px); }
 }
 
 .footer {
     text-align: center;
     font-size: 13px;
-    color: #777;
+    color: #aaa;
     margin-top: 20px;
 }
 </style>
@@ -125,36 +100,28 @@ header {
 
 <body>
 
-<header>
-🍀 Coroto de la Suerte
-</header>
+<header>🍀 Coroto de la Suerte</header>
 
 <div class="container">
 
-    <!-- RIFA -->
     <div class="card">
         <div class="title">🎁 Gran Rifa Activa</div>
-        <div class="badge">ACTIVA</div>
 
-        <!-- 🔴 CAMBIA ESTA IMAGEN -->
-        <img src="premio.jpg" class="prize-img">
+        <!-- IMAGEN DEL PREMIO -->
+        <img src="premio.jpg" class="premio">
 
-        <div class="price">💰 Precio por ticket: <b>360,00 Bs</b></div>
+        <div class="price">💰 Precio por ticket: <b>360 Bs</b></div>
 
+        <!-- BARRA -->
         <div class="progress-container">
-            <div class="progress-bar" id="progressBar"></div>
+            <div class="progress-bar" id="barra"></div>
         </div>
 
-        <div class="stats">
-            <div id="porcentajeTexto">Cargando progreso...</div>
+        <div id="textoPorcentaje" style="text-align:center; margin-bottom:10px;">
+            Cargando progreso...
         </div>
 
         <a class="btn" href="comprar.html">COMPRAR TICKETS</a>
-    </div>
-
-    <div class="card">
-        <div class="title">💳 Métodos de pago</div>
-        <div>Pago móvil · Binance · Zinli · Efectivo</div>
     </div>
 
     <div class="footer">
@@ -163,44 +130,36 @@ header {
 
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
 <script>
-// ================= CONFIG =================
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
+// CONFIG
 const TOTAL_TICKETS = 10000;
 
-// ================= CARGAR PROGRESO =================
 async function cargarProgreso() {
-  const { data, error } = await supabase
-    .from("purchases")
-    .select("quantity");
+    const { data, error } = await supabase
+        .from("purchases")
+        .select("id", { count: "exact" });
 
-  if (error) {
-    console.error(error);
-    document.getElementById("porcentajeTexto").innerText = "Error cargando progreso";
-    return;
-  }
+    if (error) {
+        console.error(error);
+        return;
+    }
 
-  let vendidos = 0;
+    const vendidos = data.length;
+    const porcentaje = Math.min((vendidos / TOTAL_TICKETS) * 100, 100);
 
-  data.forEach(row => {
-    vendidos += Number(row.quantity || 1);
-  });
-
-  let porcentaje = (vendidos / TOTAL_TICKETS) * 100;
-  if (porcentaje > 100) porcentaje = 100;
-
-  porcentaje = porcentaje.toFixed(1);
-
-  document.getElementById("progressBar").style.width = porcentaje + "%";
-  document.getElementById("porcentajeTexto").innerText = porcentaje + "% del sorteo completado";
+    document.getElementById("barra").style.width = porcentaje + "%";
+    document.getElementById("textoPorcentaje").innerText =
+        Math.round(porcentaje) + "% del sorteo completado";
 }
 
 cargarProgreso();
+
+// Se actualiza cada 30 segundos solo
+setInterval(cargarProgreso, 30000);
 </script>
 
 </body>
