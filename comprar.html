@@ -105,7 +105,7 @@ input, button {
 // ================= CONFIG =================
 const precio = 360;
 
-// ⚠️ TUS DATOS
+// ⚠️ TUS DATOS SUPABASE
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 
@@ -113,6 +113,7 @@ const supa = supabase.createClient(supabaseUrl, supabaseKey);
 
 // ================= LÓGICA =================
 let cantidad = 1;
+let enviando = false;
 
 const cantidadSpan = document.getElementById("cantidad");
 const totalSpan = document.getElementById("total");
@@ -132,6 +133,14 @@ actualizar();
 
 // ================= ENVIAR =================
 async function enviar() {
+
+  if (enviando) {
+    alert("⏳ Ya se está enviando, espera...");
+    return;
+  }
+
+  const btn = document.getElementById("btnEnviar");
+
   const nombre = document.getElementById("nombre").value.trim();
   const telefono = document.getElementById("telefono").value.trim();
   const correo = document.getElementById("mail").value.trim();
@@ -144,20 +153,27 @@ async function enviar() {
   }
 
   try {
-    // Subir imagen
-    const nombreArchivo = Date.now() + "_" + comprobante.name;
+    // 🔒 Bloquear botón
+    enviando = true;
+    btn.disabled = true;
+    btn.innerText = "⏳ Enviando...";
 
+    // 📸 Nombre único real
+    const nombreArchivo = crypto.randomUUID() + "_" + comprobante.name;
+
+    // ⬆️ Subir imagen
     const { error: uploadError } = await supa
       .storage
       .from("comprobantes")
-      .upload(nombreArchivo, comprobante);
+      .upload(nombreArchivo, comprobante, { upsert: false });
 
     if (uploadError) {
       console.error(uploadError);
       alert("❌ Error subiendo la imagen");
-      return;
+      throw uploadError;
     }
 
+    // 🌐 Obtener URL pública
     const { data: publicUrlData } = supa
       .storage
       .from("comprobantes")
@@ -165,7 +181,7 @@ async function enviar() {
 
     const imagenUrl = publicUrlData.publicUrl;
 
-    // Guardar en la tabla purchases
+    // 💾 Guardar en BD
     const { error: insertError } = await supa
       .from("purchases")
       .insert([{
@@ -179,9 +195,10 @@ async function enviar() {
     if (insertError) {
       console.error(insertError);
       alert("❌ Error guardando la compra");
-      return;
+      throw insertError;
     }
 
+    // ✅ Éxito
     alert(
       "✅ ¡Gracias por tu compra!\n\n" +
       "Hemos recibido tu comprobante correctamente.\n\n" +
@@ -189,18 +206,23 @@ async function enviar() {
       "¡Mucha suerte! 🍀"
     );
 
-    // Limpiar
+    // 🧹 Limpiar
     document.getElementById("nombre").value = "";
     document.getElementById("telefono").value = "";
     document.getElementById("mail").value = "";
     document.getElementById("referencia").value = "";
     document.getElementById("comprobante").value = "";
+
     cantidad = 1;
     actualizar();
 
   } catch (e) {
-    console.error(e);
-    alert("❌ Error inesperado");
+    console.error("Error:", e);
+  } finally {
+    // 🔓 Desbloquear botón
+    enviando = false;
+    btn.disabled = false;
+    btn.innerText = "Enviar comprobante";
   }
 }
 </script>
