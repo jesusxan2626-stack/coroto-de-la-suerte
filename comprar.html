@@ -103,7 +103,6 @@ input, button {
 <script>
 // ================= CONFIG =================
 const PRECIO = 520;
-const TOTAL_TICKETS = 10000;
 const RAFFLE_ID = 1;
 
 // SUPABASE
@@ -126,7 +125,7 @@ function actualizar() {
 function cambiar(valor) {
   cantidad += valor;
   if (cantidad < 1) cantidad = 1;
-  if (cantidad > 100) cantidad = 100; // límite por compra
+  if (cantidad > 100) cantidad = 100;
   actualizar();
 }
 
@@ -154,63 +153,49 @@ async function enviar() {
     btn.disabled = true;
     btn.innerText = "⏳ Enviando...";
 
-    // 1️⃣ Buscar tickets disponibles
-    const { data: ticketsDisponibles, error: errTickets } = await supa
-      .from("tickets")
-      .select("id")
-      .eq("raffle_id", RAFFLE_ID)
-      .eq("status", "available")
-      .limit(cantidad);
-
-    if (errTickets || ticketsDisponibles.length < cantidad) {
-      alert("❌ No hay suficientes tickets disponibles.");
-      return;
-    }
-
-    const ticketIds = ticketsDisponibles.map(t => t.id);
-
-    // 2️⃣ Subir imagen
+    // 1️⃣ Subir imagen
     const nombreArchivo = crypto.randomUUID() + "_" + comprobante.name;
-
     await supa.storage.from("comprobantes").upload(nombreArchivo, comprobante);
-
     const { data: urlData } = supa.storage.from("comprobantes").getPublicUrl(nombreArchivo);
     const imagenUrl = urlData.publicUrl;
 
-    // 3️⃣ Crear compra
-    const { data: compra, error: errCompra } = await supa
-      .from("purchases")
+    // 2️⃣ Crear ORDEN
+    const { data: orden, error: errOrden } = await supa
+      .from("orders")
       .insert([{
-        name: nombre,
-        phone: telefono,
+        nombre: nombre,
+        telefono: telefono,
         email: correo,
-        reference: referencia,
-        image_url: imagenUrl,
-        tickets_count: cantidad,
-        raffle_id: RAFFLE_ID,
-        status: "pending"
+        comprobante: imagenUrl,
+        estado: "pendiente"
       }])
       .select()
       .single();
 
-    if (errCompra) throw errCompra;
+    if (errOrden) throw errOrden;
 
-    // 4️⃣ Asignar tickets a esa compra
-    await supa
-      .from("tickets")
-      .update({
-        status: "reserved",
-        purchase_id: compra.id
-      })
-      .in("id", ticketIds);
+    // 3️⃣ Reservar tickets con TU FUNCIÓN
+    const { data: tickets, error: errTickets } = await supa
+      .rpc("reserve_tickets", {
+        p_raffle_id: RAFFLE_ID,
+        p_quantity: cantidad,
+        p_order_id: orden.id
+      });
 
-    alert("✅ Compra enviada correctamente.\nTus tickets quedaron RESERVADOS.\nCuando se apruebe el pago quedarán confirmados.");
+    if (errTickets) throw errTickets;
+
+    alert(
+      "✅ Compra enviada correctamente.\n\n" +
+      "🎟 Tus números reservados son:\n\n" +
+      tickets.join(", ") +
+      "\n\nCuando se apruebe el pago quedarán confirmados."
+    );
 
     location.href = "index.html";
 
   } catch (e) {
     console.error(e);
-    alert("❌ Error enviando la compra");
+    alert("❌ Error enviando la compra:\n" + e.message);
   } finally {
     enviando = false;
     const btn = document.getElementById("btnEnviar");
