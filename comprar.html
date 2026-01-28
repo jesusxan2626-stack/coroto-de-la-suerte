@@ -5,7 +5,6 @@
 <title>Comprar Tickets</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- SUPABASE -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
@@ -78,7 +77,7 @@ input, button {
     <span id="cantidad"></span>
     <button onclick="cambiar(1)">+</button>
   </div>
-  <p class="total">Total: <span id="total">520</span>Bs</p>
+  <p class="total">Total: <span id="total">520</span> Bs</p>
 </div>
 
 <div class="card">
@@ -103,12 +102,13 @@ input, button {
 
 <script>
 // ================= CONFIG =================
-const precio = 520;
+const PRECIO = 520;
+const TOTAL_TICKETS = 10000;
+const RAFFLE_ID = 1;
 
-// ⚠️ TUS DATOS SUPABASE
+// SUPABASE
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
-
 const supa = supabase.createClient(supabaseUrl, supabaseKey);
 
 // ================= LÓGICA =================
@@ -120,12 +120,13 @@ const totalSpan = document.getElementById("total");
 
 function actualizar() {
   cantidadSpan.innerText = cantidad;
-  totalSpan.innerText = cantidad * precio;
+  totalSpan.innerText = cantidad * PRECIO;
 }
 
 function cambiar(valor) {
   cantidad += valor;
   if (cantidad < 1) cantidad = 1;
+  if (cantidad > 100) cantidad = 100; // límite por compra
   actualizar();
 }
 
@@ -134,12 +135,7 @@ actualizar();
 // ================= ENVIAR =================
 async function enviar() {
 
-  if (enviando) {
-    alert("⏳ Ya se está enviando, espera...");
-    return;
-  }
-
-  const btn = document.getElementById("btnEnviar");
+  if (enviando) return;
 
   const nombre = document.getElementById("nombre").value.trim();
   const telefono = document.getElementById("telefono").value.trim();
@@ -148,79 +144,76 @@ async function enviar() {
   const comprobante = document.getElementById("comprobante").files[0];
 
   if (!nombre || !telefono || !referencia || !comprobante) {
-    alert("⚠️ Completa todos los datos y sube el comprobante.");
+    alert("⚠️ Completa todos los datos.");
     return;
   }
 
   try {
-    // 🔒 Bloquear botón
     enviando = true;
+    const btn = document.getElementById("btnEnviar");
     btn.disabled = true;
     btn.innerText = "⏳ Enviando...";
 
-    // 📸 Nombre único real
-    const nombreArchivo = crypto.randomUUID() + "_" + comprobante.name;
+    // 1️⃣ Buscar tickets disponibles
+    const { data: ticketsDisponibles, error: errTickets } = await supa
+      .from("tickets")
+      .select("id")
+      .eq("raffle_id", RAFFLE_ID)
+      .eq("status", "available")
+      .limit(cantidad);
 
-    // ⬆️ Subir imagen
-    const { error: uploadError } = await supa
-      .storage
-      .from("comprobantes")
-      .upload(nombreArchivo, comprobante, { upsert: false });
-
-    if (uploadError) {
-      console.error(uploadError);
-      alert("❌ Error subiendo la imagen");
-      throw uploadError;
+    if (errTickets || ticketsDisponibles.length < cantidad) {
+      alert("❌ No hay suficientes tickets disponibles.");
+      return;
     }
 
-    // 🌐 Obtener URL pública
-    const { data: publicUrlData } = supa
-      .storage
-      .from("comprobantes")
-      .getPublicUrl(nombreArchivo);
+    const ticketIds = ticketsDisponibles.map(t => t.id);
 
-    const imagenUrl = publicUrlData.publicUrl;
+    // 2️⃣ Subir imagen
+    const nombreArchivo = crypto.randomUUID() + "_" + comprobante.name;
 
-    // 💾 Guardar en BD
-    const { error: insertError } = await supa
+    await supa.storage.from("comprobantes").upload(nombreArchivo, comprobante);
+
+    const { data: urlData } = supa.storage.from("comprobantes").getPublicUrl(nombreArchivo);
+    const imagenUrl = urlData.publicUrl;
+
+    // 3️⃣ Crear compra
+    const { data: compra, error: errCompra } = await supa
       .from("purchases")
       .insert([{
         name: nombre,
         phone: telefono,
         email: correo,
         reference: referencia,
-        image_url: imagenUrl
-      }]);
+        image_url: imagenUrl,
+        tickets_count: cantidad,
+        raffle_id: RAFFLE_ID,
+        status: "pending"
+      }])
+      .select()
+      .single();
 
-    if (insertError) {
-      console.error(insertError);
-      alert("❌ Error guardando la compra");
-      throw insertError;
-    }
+    if (errCompra) throw errCompra;
 
-    // ✅ Éxito
-    alert(
-      "✅ ¡Gracias por tu compra!\n\n" +
-      "Hemos recibido tu comprobante correctamente.\n\n" +
-      "En un plazo máximo de 24 horas tu pago será verificado.\n\n" +
-      "¡Mucha suerte! 🍀"
-    );
+    // 4️⃣ Asignar tickets a esa compra
+    await supa
+      .from("tickets")
+      .update({
+        status: "reserved",
+        purchase_id: compra.id
+      })
+      .in("id", ticketIds);
 
-    // 🧹 Limpiar
-    document.getElementById("nombre").value = "";
-    document.getElementById("telefono").value = "";
-    document.getElementById("mail").value = "";
-    document.getElementById("referencia").value = "";
-    document.getElementById("comprobante").value = "";
+    alert("✅ Compra enviada correctamente.\nTus tickets quedaron RESERVADOS.\nCuando se apruebe el pago quedarán confirmados.");
 
-    cantidad = 1;
-    actualizar();
+    location.href = "index.html";
 
   } catch (e) {
-    console.error("Error:", e);
+    console.error(e);
+    alert("❌ Error enviando la compra");
   } finally {
-    // 🔓 Desbloquear botón
     enviando = false;
+    const btn = document.getElementById("btnEnviar");
     btn.disabled = false;
     btn.innerText = "Enviar comprobante";
   }
