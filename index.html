@@ -137,29 +137,32 @@ const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
 // CONFIG
 const TOTAL_TICKETS = 10000;
+const RAFFLE_ID = 1;
 
 async function cargarProgreso() {
-    const { data, error } = await supabase
-        .from("purchases")
-        .select("id", { count: "exact" });
+    const { count, error } = await supabase
+        .from("tickets")
+        .select("*", { count: "exact", head: true })
+        .eq("raffle_id", RAFFLE_ID)
+        .eq("status", "sold");
 
     if (error) {
-        console.error(error);
+        console.error("Error cargando progreso:", error);
         return;
     }
 
-    const vendidos = data.length;
+    const vendidos = count || 0;
     const porcentaje = Math.min((vendidos / TOTAL_TICKETS) * 100, 100);
 
-    document.getElementById("barra").style.width = porcentaje + "%";
+    document.getElementById("barra").style.width = porcentaje.toFixed(2) + "%";
     document.getElementById("textoPorcentaje").innerText =
-        Math.round(porcentaje) + "% del sorteo completado";
+        porcentaje.toFixed(2) + "% del sorteo completado";
 }
 
 cargarProgreso();
 
-// Se actualiza cada 30 segundos solo
-setInterval(cargarProgreso, 30000);
+// Actualiza cada 20 segundos
+setInterval(cargarProgreso, 20000);
 </script>
 
 </body>
