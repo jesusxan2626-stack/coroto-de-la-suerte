@@ -26,6 +26,12 @@ header {
     max-width: 420px;
     margin: auto;
     padding: 15px;
+    animation: fadeIn 0.8s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(15px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .card {
@@ -57,6 +63,17 @@ header {
     margin-bottom: 10px;
 }
 
+.prize-img {
+    width: 100%;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    transition: transform 0.4s ease;
+}
+
+.prize-img:hover {
+    transform: scale(1.05);
+}
+
 .progress-container {
     background: #e5e7eb;
     border-radius: 20px;
@@ -69,7 +86,7 @@ header {
     background: linear-gradient(90deg, #00ff6a, #00c853);
     width: 0%;
     height: 100%;
-    transition: width 0.5s;
+    transition: width 1s ease;
 }
 
 .stats {
@@ -90,6 +107,11 @@ header {
     font-weight: bold;
     border: none;
     text-decoration: none;
+    transition: transform 0.15s ease;
+}
+
+.btn:active {
+    transform: scale(0.97);
 }
 
 .footer {
@@ -113,6 +135,9 @@ header {
     <div class="card">
         <div class="title">🎁 Gran Rifa Activa</div>
         <div class="badge">ACTIVA</div>
+
+        <!-- 🔴 CAMBIA ESTA IMAGEN -->
+        <img src="premio.jpg" class="prize-img">
 
         <div class="price">💰 Precio por ticket: <b>360,00 Bs</b></div>
 
@@ -146,7 +171,6 @@ const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
-// TOTAL DE TICKETS DEL SORTEO
 const TOTAL_TICKETS = 10000;
 
 // ================= CARGAR PROGRESO =================
