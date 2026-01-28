@@ -2,128 +2,87 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Administrador - Coroto de la Suerte</title>
+<title>Admin - Rifas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 body {
-  margin: 0;
   font-family: Arial, sans-serif;
   background: #0b1a33;
   color: white;
-}
-
-header {
-  background: #08162f;
-  padding: 16px;
-  text-align: center;
-  font-weight: bold;
-  font-size: 20px;
-}
-
-.container {
-  max-width: 900px;
-  margin: auto;
+  margin: 0;
   padding: 15px;
 }
 
-.card {
+h1 {
+  text-align: center;
+}
+
+.compra {
   background: #122654;
   border-radius: 12px;
   padding: 15px;
   margin-bottom: 15px;
 }
 
-h2 {
-  margin-top: 0;
-}
-
-button {
-  padding: 8px 12px;
-  border-radius: 6px;
-  border: none;
+.estado {
   font-weight: bold;
-  cursor: pointer;
 }
 
-.btn-approve { background: #00c853; }
-.btn-reject { background: #ff5252; color: white; }
-.btn-view { background: #03a9f4; color: black; }
+.pendiente { color: orange; }
+.aprobado { color: #00ff88; }
+.rechazado { color: red; }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 14px;
+.botones {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
 }
 
-th, td {
-  border-bottom: 1px solid #1c2f5a;
-  padding: 8px;
-  text-align: left;
+.botones button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.aprobar {
+  background: #00c853;
+}
+
+.rechazar {
+  background: #ff5252;
 }
 
 img {
-  max-width: 100px;
-  border-radius: 8px;
-}
-
-input {
-  padding: 10px;
   width: 100%;
   border-radius: 8px;
-  border: none;
-  margin-bottom: 10px;
+  margin-top: 10px;
 }
 </style>
 </head>
-
 <body>
 
-<header>🛠️ Administrador - Coroto de la Suerte</header>
+<h1>🛠 Panel de Administración</h1>
 
-<div class="container">
-
-  <!-- BUSCAR GANADOR -->
-  <div class="card">
-    <h2>🏆 Buscar ganador por número</h2>
-    <input id="winnerNumber" placeholder="Número de ticket ganador">
-    <button onclick="buscarGanador()">Buscar ganador</button>
-    <pre id="winnerResult"></pre>
-  </div>
-
-  <!-- COMPRAS -->
-  <div class="card">
-    <h2>🧾 Compras recibidas</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Nombre</th>
-          <th>Teléfono</th>
-          <th>Referencia</th>
-          <th>Imagen</th>
-          <th>Estado</th>
-          <th>Acciones</th>
-        </tr>
-      </thead>
-      <tbody id="comprasBody"></tbody>
-    </table>
-  </div>
-
-</div>
+<div id="lista"></div>
 
 <script>
+// ================= CONFIG =================
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
-const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+const supabaseKey = "TU_PUBLIC_KEY_AQUI"; // ⚠️ MISMA KEY QUE EN comprar.html
+const supa = supabase.createClient(supabaseUrl, supabaseKey);
 
-// Cargar compras
-async function cargarCompras() {
-  const { data, error } = await supabase
+// ================= CARGAR COMPRAS =================
+async function cargar() {
+  const { data, error } = await supa
     .from("purchases")
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("id", { ascending: false });
 
   if (error) {
     alert("Error cargando compras");
@@ -131,83 +90,79 @@ async function cargarCompras() {
     return;
   }
 
-  const tbody = document.getElementById("comprasBody");
-  tbody.innerHTML = "";
+  const div = document.getElementById("lista");
+  div.innerHTML = "";
 
-  data.forEach(p => {
-    const tr = document.createElement("tr");
+  data.forEach(c => {
+    const estadoClass =
+      c.status === "pending" ? "pendiente" :
+      c.status === "approved" ? "aprobado" :
+      "rechazado";
 
-    tr.innerHTML = `
-      <td>${p.name}</td>
-      <td>${p.phone}</td>
-      <td>${p.reference}</td>
-      <td><a href="${p.image_url}" target="_blank"><img src="${p.image_url}"></a></td>
-      <td>${p.status}</td>
-      <td>
-        <button class="btn-approve" onclick="aprobar('${p.id}')">Aprobar</button>
-        <button class="btn-reject" onclick="rechazar('${p.id}')">Rechazar</button>
-      </td>
+    const card = document.createElement("div");
+    card.className = "compra";
+
+    card.innerHTML = `
+      <p><b>👤 Nombre:</b> ${c.name}</p>
+      <p><b>📞 Teléfono:</b> ${c.phone}</p>
+      <p><b>📧 Email:</b> ${c.email || ""}</p>
+      <p><b>💳 Referencia:</b> ${c.reference}</p>
+      <p><b>🎟 Cantidad:</b> ${c.tickets_count}</p>
+      <p><b>📌 Estado:</b> <span class="estado ${estadoClass}">${c.status}</span></p>
+
+      <p><b>🧾 Comprobante:</b></p>
+      <a href="${c.image_url}" target="_blank">
+        <img src="${c.image_url}">
+      </a>
+
+      <div class="botones">
+        <button class="aprobar" onclick="aprobar(${c.id})">✅ Aprobar</button>
+        <button class="rechazar" onclick="rechazar(${c.id})">❌ Rechazar</button>
+      </div>
     `;
 
-    tbody.appendChild(tr);
+    div.appendChild(card);
   });
 }
 
-// Aprobar
+// ================= APROBAR =================
 async function aprobar(id) {
-  if (!confirm("¿Aprobar este pago?")) return;
+  if (!confirm("¿Aprobar esta compra?")) return;
 
-  const { error } = await supabase.rpc("approve_purchase", { p_purchase_id: id });
+  // 1. Cambiar estado compra
+  await supa.from("purchases")
+    .update({ status: "approved" })
+    .eq("id", id);
 
-  if (error) {
-    alert("Error aprobando");
-    console.error(error);
-  } else {
-    alert("✅ Compra aprobada y tickets asignados");
-    cargarCompras();
-  }
+  // 2. Pasar tickets a SOLD
+  await supa.from("tickets")
+    .update({ status: "sold" })
+    .eq("purchase_id", id);
+
+  alert("✅ Compra aprobada");
+  cargar();
 }
 
-// Rechazar
+// ================= RECHAZAR =================
 async function rechazar(id) {
-  if (!confirm("¿Rechazar este pago y liberar tickets?")) return;
+  if (!confirm("¿Rechazar esta compra y liberar los tickets?")) return;
 
-  const { error } = await supabase.rpc("reject_purchase", { p_purchase_id: id });
+  // 1. Liberar tickets
+  await supa.from("tickets")
+    .update({ status: "available", purchase_id: null })
+    .eq("purchase_id", id);
 
-  if (error) {
-    alert("Error rechazando");
-    console.error(error);
-  } else {
-    alert("❌ Compra rechazada y tickets liberados");
-    cargarCompras();
-  }
+  // 2. Marcar compra como rechazada
+  await supa.from("purchases")
+    .update({ status: "rejected" })
+    .eq("id", id);
+
+  alert("❌ Compra rechazada");
+  cargar();
 }
 
-// Buscar ganador
-async function buscarGanador() {
-  const n = document.getElementById("winnerNumber").value;
-
-  if (!n) return alert("Pon un número");
-
-  const { data, error } = await supabase.rpc("find_winner", { p_ticket_number: parseInt(n) });
-
-  if (error) {
-    console.error(error);
-    alert("Error buscando ganador");
-    return;
-  }
-
-  const out = document.getElementById("winnerResult");
-
-  if (!data || data.length === 0) {
-    out.textContent = "❌ Ese número no está vendido.";
-  } else {
-    out.textContent = JSON.stringify(data[0], null, 2);
-  }
-}
-
-// Inicial
-cargarCompras();
+// ================= INIT =================
+cargar();
 </script>
 
 </body>
