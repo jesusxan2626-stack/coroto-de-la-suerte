@@ -78,7 +78,7 @@ input, button {
     <span id="cantidad"></span>
     <button onclick="cambiar(1)">+</button>
   </div>
-  <p class="total">Total: <span id="total">360,00</span> Bs</p>
+  <p class="total">Total: <span id="total">360</span> Bs</p>
 </div>
 
 <div class="card">
@@ -105,7 +105,7 @@ input, button {
 // ================= CONFIG =================
 const precio = 360;
 
-// 🔴 PON AQUÍ TUS DATOS REALES
+// 🔴 TUS DATOS
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 
@@ -132,10 +132,10 @@ actualizar();
 
 // ================= ENVIAR =================
 async function enviar() {
-  const nombre = document.getElementById("nombre").value;
-  const telefono = document.getElementById("telefono").value;
-  const correo = document.getElementById("mail").value;
-  const referencia = document.getElementById("referencia").value;
+  const nombre = document.getElementById("nombre").value.trim();
+  const telefono = document.getElementById("telefono").value.trim();
+  const correo = document.getElementById("mail").value.trim();
+  const referencia = document.getElementById("referencia").value.trim();
   const comprobante = document.getElementById("comprobante").files[0];
 
   if (!nombre || !telefono || !referencia || !comprobante) {
@@ -143,61 +143,65 @@ async function enviar() {
     return;
   }
 
-  // Subir imagen
-  const nombreArchivo = Date.now() + "_" + comprobante.name;
+  try {
+    // Subir imagen
+    const nombreArchivo = Date.now() + "_" + comprobante.name;
 
-  const { error: uploadError } = await supa
-    .storage
-    .from("comprobantes")
-    .upload(nombreArchivo, comprobante);
+    const { error: uploadError } = await supa
+      .storage
+      .from("comprobantes")
+      .upload(nombreArchivo, comprobante);
 
-  if (uploadError) {
-    alert("❌ Error subiendo la imagen");
-    return;
+    if (uploadError) {
+      console.error(uploadError);
+      alert("❌ Error subiendo la imagen");
+      return;
+    }
+
+    const { data: publicUrlData } = supa
+      .storage
+      .from("comprobantes")
+      .getPublicUrl(nombreArchivo);
+
+    const imagenUrl = publicUrlData.publicUrl;
+
+    // Guardar en la tabla REAL: purchases
+    const { error: insertError } = await supa
+      .from("purchases")
+      .insert([{
+        name: nombre,
+        phone: telefono,
+        email: correo,
+        reference: referencia,
+        image_url: imagenUrl
+      }]);
+
+    if (insertError) {
+      console.error(insertError);
+      alert("❌ Error guardando la compra");
+      return;
+    }
+
+    alert(
+      "✅ ¡Gracias por tu compra!\n\n" +
+      "Hemos recibido tu comprobante correctamente.\n\n" +
+      "En un plazo máximo de 24 horas tu pago será verificado.\n\n" +
+      "¡Mucha suerte! 🍀"
+    );
+
+    // Limpiar
+    document.getElementById("nombre").value = "";
+    document.getElementById("telefono").value = "";
+    document.getElementById("mail").value = "";
+    document.getElementById("referencia").value = "";
+    document.getElementById("comprobante").value = "";
+    cantidad = 1;
+    actualizar();
+
+  } catch (e) {
+    console.error(e);
+    alert("❌ Error inesperado");
   }
-
-  const { data: publicUrlData } = supa
-    .storage
-    .from("comprobantes")
-    .getPublicUrl(nombreArchivo);
-
-  const imagenUrl = publicUrlData.publicUrl;
-
-  // Guardar compra
-  const { error: insertError } = await supa
-    .from("compras")
-    .insert([{
-      nombre,
-      telefono,
-      correo,
-      referencia,
-      cantidad,
-      total: cantidad * precio,
-      imagen: imagenUrl,
-      estado: "pendiente"
-    }]);
-
-  if (insertError) {
-    alert("❌ Error guardando la compra");
-    return;
-  }
-
-  alert(
-    "✅ ¡Gracias por tu compra!\n\n" +
-    "Hemos recibido tu comprobante correctamente.\n\n" +
-    "En un plazo máximo de 24 horas tu pago será verificado y tus tickets serán activados en el sistema.\n\n" +
-    "Podrás consultarlos en nuestro verificador de tickets usando tu cédula.\n\n" +
-    "¡Mucha suerte! 🍀"
-  );
-
-  // Limpiar
-  document.getElementById("nombre").value = "";
-  document.getElementById("telefono").value = "";
-  document.getElementById("mail").value = "";
-  document.getElementById("referencia").value = "";
-  document.getElementById("comprobante").value = "";
-  cantidad = 1;
-  actualizar();
 }
 </script>
 
