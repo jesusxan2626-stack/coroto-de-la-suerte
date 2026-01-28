@@ -15,18 +15,15 @@ body {
   margin: 0;
   padding: 15px;
 }
-
 .card {
   background: #122654;
   border-radius: 12px;
   padding: 15px;
   margin-bottom: 15px;
 }
-
 h1, h2 {
   text-align: center;
 }
-
 .tickets-box {
   display: flex;
   justify-content: center;
@@ -34,7 +31,6 @@ h1, h2 {
   gap: 20px;
   font-size: 24px;
 }
-
 .tickets-box button {
   font-size: 30px;
   width: 60px;
@@ -42,13 +38,11 @@ h1, h2 {
   border: none;
   border-radius: 10px;
 }
-
 .total {
   text-align: center;
   font-size: 28px;
   color: #00ff88;
 }
-
 input, button {
   width: 100%;
   padding: 12px;
@@ -57,7 +51,6 @@ input, button {
   border: none;
   font-size: 18px;
 }
-
 .btn {
   background: #00c853;
   color: black;
@@ -105,7 +98,7 @@ input, button {
 const PRECIO = 520;
 const RAFFLE_ID = 1;
 
-// SUPABASE
+// Supabase
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 const supa = supabase.createClient(supabaseUrl, supabaseKey);
@@ -153,13 +146,21 @@ async function enviar() {
     btn.disabled = true;
     btn.innerText = "⏳ Enviando...";
 
-    // 1️⃣ Subir imagen
+    // 1️⃣ Subir comprobante
     const nombreArchivo = crypto.randomUUID() + "_" + comprobante.name;
-    await supa.storage.from("comprobantes").upload(nombreArchivo, comprobante);
-    const { data: urlData } = supa.storage.from("comprobantes").getPublicUrl(nombreArchivo);
+    await supa
+      .storage
+      .from("comprobantes")
+      .upload(nombreArchivo, comprobante);
+
+    const { data: urlData } = supa
+      .storage
+      .from("comprobantes")
+      .getPublicUrl(nombreArchivo);
+
     const imagenUrl = urlData.publicUrl;
 
-    // 2️⃣ Crear ORDEN
+    // 2️⃣ Crea orden en la tabla "orders"
     const { data: orden, error: errOrden } = await supa
       .from("orders")
       .insert([{
@@ -174,7 +175,7 @@ async function enviar() {
 
     if (errOrden) throw errOrden;
 
-    // 3️⃣ Reservar tickets con TU FUNCIÓN
+    // 3️⃣ Llama tu función reserve_tickets
     const { data: tickets, error: errTickets } = await supa
       .rpc("reserve_tickets", {
         p_raffle_id: RAFFLE_ID,
@@ -185,10 +186,7 @@ async function enviar() {
     if (errTickets) throw errTickets;
 
     alert(
-      "✅ Compra enviada correctamente.\n\n" +
-      "🎟 Tus números reservados son:\n\n" +
-      tickets.join(", ") +
-      "\n\nCuando se apruebe el pago quedarán confirmados."
+      `✅ Compra enviada correctamente.\n\n🎟 Tus números reservados:\n${tickets.join(", ")}\n\nCuando se apruebe el pago quedarán confirmados.`
     );
 
     location.href = "index.html";
@@ -196,6 +194,7 @@ async function enviar() {
   } catch (e) {
     console.error(e);
     alert("❌ Error enviando la compra:\n" + e.message);
+
   } finally {
     enviando = false;
     const btn = document.getElementById("btnEnviar");
