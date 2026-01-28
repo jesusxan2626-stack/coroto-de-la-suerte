@@ -105,7 +105,7 @@ input, button {
 // ================= CONFIG =================
 const precio = 360;
 
-// 🔴 TUS DATOS
+// ⚠️ TUS DATOS
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 
@@ -165,7 +165,7 @@ async function enviar() {
 
     const imagenUrl = publicUrlData.publicUrl;
 
-    // Guardar en la tabla REAL: purchases
+    // Guardar en la tabla purchases
     const { error: insertError } = await supa
       .from("purchases")
       .insert([{
