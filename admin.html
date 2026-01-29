@@ -63,29 +63,41 @@ img {
   border-radius: 8px;
   margin-top: 10px;
 }
+
+.tickets {
+  background: #0b1a33;
+  padding: 10px;
+  border-radius: 8px;
+  margin-top: 10px;
+  font-family: monospace;
+}
 </style>
 </head>
 <body>
 
 <h1>🛠 Panel de Administración</h1>
 
-<div id="lista"></div>
+<div id="lista">Cargando...</div>
 
 <script>
 // ================= CONFIG =================
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
-const supabaseKey = "TU_PUBLIC_KEY_AQUI"; // ⚠️ MISMA KEY QUE EN comprar.html
+const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM"; // ✅ TU KEY REAL
 const supa = supabase.createClient(supabaseUrl, supabaseKey);
 
 // ================= CARGAR COMPRAS =================
 async function cargar() {
+
   const { data, error } = await supa
     .from("purchases")
-    .select("*")
-    .order("id", { ascending: false });
+    .select(`
+      *,
+      tickets ( number )
+    `)
+    .order("created_at", { ascending: false });
 
   if (error) {
-    alert("Error cargando compras");
+    alert("❌ Error cargando compras");
     console.error(error);
     return;
   }
@@ -93,11 +105,19 @@ async function cargar() {
   const div = document.getElementById("lista");
   div.innerHTML = "";
 
+  if (data.length === 0) {
+    div.innerHTML = "No hay compras todavía.";
+    return;
+  }
+
   data.forEach(c => {
+
     const estadoClass =
       c.status === "pending" ? "pendiente" :
       c.status === "approved" ? "aprobado" :
       "rechazado";
+
+    const numeros = (c.tickets || []).map(t => String(t.number).padStart(4, "0")).join(", ");
 
     const card = document.createElement("div");
     card.className = "compra";
@@ -110,14 +130,19 @@ async function cargar() {
       <p><b>🎟 Cantidad:</b> ${c.tickets_count}</p>
       <p><b>📌 Estado:</b> <span class="estado ${estadoClass}">${c.status}</span></p>
 
+      <div class="tickets">
+        <b>🎯 Números asignados:</b><br>
+        ${numeros || "Aún no asignados"}
+      </div>
+
       <p><b>🧾 Comprobante:</b></p>
       <a href="${c.image_url}" target="_blank">
         <img src="${c.image_url}">
       </a>
 
       <div class="botones">
-        <button class="aprobar" onclick="aprobar(${c.id})">✅ Aprobar</button>
-        <button class="rechazar" onclick="rechazar(${c.id})">❌ Rechazar</button>
+        <button class="aprobar" onclick="aprobar('${c.id}')">✅ Aprobar</button>
+        <button class="rechazar" onclick="rechazar('${c.id}')">❌ Rechazar</button>
       </div>
     `;
 
@@ -129,12 +154,10 @@ async function cargar() {
 async function aprobar(id) {
   if (!confirm("¿Aprobar esta compra?")) return;
 
-  // 1. Cambiar estado compra
   await supa.from("purchases")
     .update({ status: "approved" })
     .eq("id", id);
 
-  // 2. Pasar tickets a SOLD
   await supa.from("tickets")
     .update({ status: "sold" })
     .eq("purchase_id", id);
@@ -147,12 +170,10 @@ async function aprobar(id) {
 async function rechazar(id) {
   if (!confirm("¿Rechazar esta compra y liberar los tickets?")) return;
 
-  // 1. Liberar tickets
   await supa.from("tickets")
     .update({ status: "available", purchase_id: null })
     .eq("purchase_id", id);
 
-  // 2. Marcar compra como rechazada
   await supa.from("purchases")
     .update({ status: "rejected" })
     .eq("id", id);
