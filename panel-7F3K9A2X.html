@@ -2,10 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Admin - Menú</title>
+<title>Panel Admin</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 body {
@@ -13,7 +11,7 @@ body {
   background: #0b1a33;
   color: white;
   margin: 0;
-  padding: 20px;
+  padding: 15px;
 }
 
 h1 {
@@ -22,16 +20,17 @@ h1 {
 
 .menu {
   display: grid;
+  grid-template-columns: 1fr;
   gap: 15px;
   max-width: 400px;
   margin: auto;
 }
 
-.menu button {
+button {
   padding: 15px;
   font-size: 18px;
-  border: none;
   border-radius: 10px;
+  border: none;
   font-weight: bold;
 }
 
@@ -44,18 +43,18 @@ h1 {
 </head>
 <body>
 
-<h1>🛠 Panel Administrativo</h1>
+<h1>🛠 Panel de Administración</h1>
 
 <div class="menu">
   <button class="pendientes" onclick="ir('admin-pendientes.html')">⏳ Compras por aprobar</button>
   <button class="aprobadas" onclick="ir('admin-aprobadas.html')">✅ Compras aprobadas</button>
   <button class="rechazadas" onclick="ir('admin-rechazadas.html')">❌ Compras rechazadas</button>
-  <button class="buscar" onclick="ir('admin-buscar.html')">🔍 Verificar ticket</button>
+  <button class="buscar" onclick="ir('admin-buscar-ticket.html')">🔍 Buscar ticket</button>
   <button class="salir" onclick="salir()">🚪 Cerrar sesión</button>
 </div>
 
 <script>
-// 🔐 PROTECCIÓN LOGIN
+// 🔐 PROTECCIÓN
 if (localStorage.getItem("admin_auth") !== "ok") {
   location.href = "login.html";
 }
