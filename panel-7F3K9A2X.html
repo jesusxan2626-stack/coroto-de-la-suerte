@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Admin - Rifas</title>
+<title>Admin - Menú</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -13,153 +13,61 @@ body {
   background: #0b1a33;
   color: white;
   margin: 0;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+}
+
+.menu {
+  display: grid;
+  gap: 15px;
+  max-width: 400px;
+  margin: auto;
+}
+
+.menu button {
   padding: 15px;
-}
-h1,h2 { text-align:center; }
-
-.compra {
-  background: #122654;
-  border-radius: 12px;
-  padding: 15px;
-  margin-bottom: 15px;
-}
-
-.pendiente { color: orange; }
-.aprobado { color: #00ff88; }
-.rechazado { color: red; }
-
-.botones {
-  display: flex;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-button {
-  padding: 10px;
+  font-size: 18px;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   font-weight: bold;
-  font-size: 16px;
 }
 
-.aprobar { background:#00c853; }
-.rechazar { background:#ff5252; }
-
-img {
-  width:100%;
-  max-width:300px;
-  border-radius:8px;
-  margin-top:10px;
-}
+.pendientes { background: orange; }
+.aprobadas { background: #00c853; }
+.rechazadas { background: #ff5252; }
+.buscar { background: #03a9f4; }
+.salir { background: #777; }
 </style>
 </head>
 <body>
 
-<h1>🛠 Panel de Administración</h1>
+<h1>🛠 Panel Administrativo</h1>
 
-<h2>⏳ Por aprobar</h2>
-<div id="pendientes"></div>
-
-<h2>✅ Aprobadas</h2>
-<div id="aprobadas"></div>
-
-<h2>❌ Rechazadas</h2>
-<div id="rechazadas"></div>
+<div class="menu">
+  <button class="pendientes" onclick="ir('admin-pendientes.html')">⏳ Compras por aprobar</button>
+  <button class="aprobadas" onclick="ir('admin-aprobadas.html')">✅ Compras aprobadas</button>
+  <button class="rechazadas" onclick="ir('admin-rechazadas.html')">❌ Compras rechazadas</button>
+  <button class="buscar" onclick="ir('admin-buscar.html')">🔍 Verificar ticket</button>
+  <button class="salir" onclick="salir()">🚪 Cerrar sesión</button>
+</div>
 
 <script>
-// ================= SUPABASE =================
-const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
-const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
-const supa = supabase.createClient(supabaseUrl, supabaseKey);
-
-// ================= CARGAR =================
-async function cargar() {
-
-  const { data: compras, error } = await supa
-    .from("purchases")
-    .select("*")
-    .order("id", { ascending: false });
-
-  if (error) {
-    alert("Error cargando compras");
-    console.error(error);
-    return;
-  }
-
-  pendientes.innerHTML = "";
-  aprobadas.innerHTML = "";
-  rechazadas.innerHTML = "";
-
-  for (let c of compras) {
-
-    // 🔥 BUSCAR LOS TICKETS REALES DE ESTA COMPRA
-    const { data: tickets } = await supa
-      .from("tickets")
-      .select("ticket_number")
-      .eq("purchase_id", c.id)
-      .order("ticket_number");
-
-    const cantidad = tickets.length;
-    const numeros = tickets.map(t => t.ticket_number).join(", ");
-
-    const estadoClass =
-      c.status === "pending" ? "pendiente" :
-      c.status === "approved" ? "aprobado" : "rechazado";
-
-    const div = document.createElement("div");
-    div.className = "compra";
-
-    div.innerHTML = `
-      <p><b>👤 Nombre:</b> ${c.name}</p>
-      <p><b>📞 Teléfono:</b> ${c.phone}</p>
-      <p><b>💳 Referencia:</b> ${c.reference}</p>
-      <p><b>🎟 Cantidad:</b> ${cantidad}</p>
-      <p><b>🎫 Números:</b> ${numeros || "N/A"}</p>
-      <p><b>📌 Estado:</b> <span class="${estadoClass}">${c.status}</span></p>
-
-      <a href="${c.image_url}" target="_blank">
-        <img src="${c.image_url}">
-      </a>
-
-      ${c.status === "pending" ? `
-        <div class="botones">
-          <button class="aprobar" onclick="aprobar(${c.id})">✅ Aprobar</button>
-          <button class="rechazar" onclick="rechazar(${c.id})">❌ Rechazar</button>
-        </div>
-      ` : ``}
-    `;
-
-    if (c.status === "pending") pendientes.appendChild(div);
-    else if (c.status === "approved") aprobadas.appendChild(div);
-    else rechazadas.appendChild(div);
-  }
+// 🔐 PROTECCIÓN LOGIN
+if (localStorage.getItem("admin_auth") !== "ok") {
+  location.href = "login.html";
 }
 
-// ================= APROBAR =================
-async function aprobar(id) {
-  if (!confirm("¿Aprobar esta compra?")) return;
-
-  await supa.from("purchases").update({ status: "approved" }).eq("id", id);
-  await supa.from("tickets").update({ status: "sold" }).eq("purchase_id", id);
-
-  cargar();
+function ir(p) {
+  location.href = p;
 }
 
-// ================= RECHAZAR =================
-async function rechazar(id) {
-  if (!confirm("¿Rechazar esta compra y liberar tickets?")) return;
-
-  await supa.from("tickets")
-    .update({ status: "available", purchase_id: null })
-    .eq("purchase_id", id);
-
-  await supa.from("purchases").update({ status: "rejected" }).eq("id", id);
-
-  cargar();
+function salir() {
+  localStorage.removeItem("admin_auth");
+  location.href = "login.html";
 }
-
-// ================= INIT =================
-cargar();
 </script>
 
 </body>
