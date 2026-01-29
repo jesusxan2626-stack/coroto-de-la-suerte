@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Buscar Ticket</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #0b1a33;
+  color: white;
+  margin: 0;
+  padding: 15px;
+}
+
+h1 {
+  text-align: center;
+}
+
+.box {
+  background: #122654;
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 15px;
+}
+
+input, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: none;
+  font-size: 18px;
+}
+
+button {
+  background: #00c853;
+  font-weight: bold;
+}
+
+.resultado {
+  background: #122654;
+  padding: 15px;
+  border-radius: 12px;
+  margin-top: 15px;
+}
+.volver { background:#777; }
+</style>
+</head>
+<body>
+
+<h1>🔍 Buscar Ticket</h1>
+
+<button class="volver" onclick="volver()">⬅️ Volver al menú</button>
+
+<div class="box">
+  <input id="numero" placeholder="Número de ticket">
+  <button onclick="buscar()">Buscar</button>
+</div>
+
+<div id="resultado"></div>
+
+<script>
+// 🔐 PROTECCIÓN LOGIN
+if (localStorage.getItem("admin_auth") !== "ok") {
+  location.href = "login.html";
+}
+
+// ================= SUPABASE =================
+const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
+const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
+const supa = supabase.createClient(supabaseUrl, supabaseKey);
+
+// ================= BUSCAR =================
+async function buscar() {
+  const num = document.getElementById("numero").value.trim();
+  if (!num) return alert("Escribe un número");
+
+  const { data: ticket, error } = await supa
+    .from("tickets")
+    .select("id, ticket_number, status, purchase_id, purchases(*)")
+    .eq("ticket_number", num)
+    .single();
+
+  if (error || !ticket) {
+    document.getElementById("resultado").innerHTML = "<p>❌ Ticket no encontrado</p>";
+    return;
+  }
+
+  if (ticket.status === "available") {
+    document.getElementById("resultado").innerHTML = `
+      <div class="resultado">
+        <p>🎟 Ticket: ${ticket.ticket_number}</p>
+        <p>📌 Estado: DISPONIBLE</p>
+      </div>
+    `;
+    return;
+  }
+
+  const c = ticket.purchases;
+
+  document.getElementById("resultado").innerHTML = `
+    <div class="resultado">
+      <p><b>🎟 Ticket:</b> ${ticket.ticket_number}</p>
+      <p><b>📌 Estado:</b> ${ticket.status}</p>
+      <hr>
+      <p><b>👤 Nombre:</b> ${c.name}</p>
+      <p><b>📞 Teléfono:</b> ${c.phone}</p>
+      <p><b>📧 Email:</b> ${c.email || ""}</p>
+      <p><b>💳 Referencia:</b> ${c.reference}</p>
+      <p><b>🧾 Estado compra:</b> ${c.status}</p>
+    </div>
+  `;
+}
+
+function volver() {
+  location.href = "panel-7F3K9A2X.html";
+}
+</script>
+
+</body>
+</html>
