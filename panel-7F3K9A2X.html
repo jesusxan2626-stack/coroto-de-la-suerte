@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Admin - Rifas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #0b1a33;
+  color: white;
+  margin: 0;
+  padding: 15px;
+}
+
+h1 {
+  text-align: center;
+}
+
+.menu {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.menu button {
+  flex: 1;
+  padding: 10px;
+  font-weight: bold;
+  border-radius: 8px;
+  border: none;
+}
+
+.section {
+  display: none;
+}
+
+.section.active {
+  display: block;
+}
+
+.compra {
+  background: #122654;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+img {
+  width: 100%;
+  border-radius: 8px;
+}
+</style>
+</head>
+<body>
+
+<h1>🛠 Panel Administrativo</h1>
+
+<button onclick="salir()">🚪 Cerrar sesión</button>
+
+<div class="menu">
+  <button onclick="ver('pendientes')">⏳ Por aprobar</button>
+  <button onclick="ver('tickets')">🎟 Tickets en sistema</button>
+  <button onclick="ver('buscar')">🔍 Buscar ticket</button>
+</div>
+
+<div id="pendientes" class="section active">
+  <h2>⏳ Compras pendientes</h2>
+  <div id="listaPendientes"></div>
+</div>
+
+<div id="tickets" class="section">
+  <h2>🎟 Todos los tickets</h2>
+  <div id="listaTickets"></div>
+</div>
+
+<div id="buscar" class="section">
+  <h2>🔍 Buscar ticket ganador</h2>
+  <input id="buscarNumero" placeholder="Ej: 0001">
+  <button onclick="buscarTicket()">Buscar</button>
+  <div id="resultadoBusqueda"></div>
+</div>
+
+<script>
+// 🔐 PROTECCIÓN
+if (localStorage.getItem("admin_auth") !== "ok") {
+  location.href = "login.html";
+}
+
+// ================= SUPABASE =================
+const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
+const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
+const supa = supabase.createClient(supabaseUrl, supabaseKey);
+
+// ================= MENU =================
+function ver(id) {
+  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+}
+
+// ================= SALIR =================
+function salir() {
+  localStorage.removeItem("admin_auth");
+  location.href = "login.html";
+}
+
+// ================= CARGAR TODO =================
+cargarPendientes();
+cargarTickets();
+
+// ================= PENDIENTES =================
+async function cargarPendientes() {
+  const { data } = await supa
+    .from("purchases")
+    .select("*")
+    .eq("status", "pending")
+    .order("id", { ascending: false });
+
+  const div = document.getElementById("listaPendientes");
+  div.innerHTML = "";
+
+  data.forEach(c => {
+    const card = document.createElement("div");
+    card.className = "compra";
+    card.innerHTML = `
+      <p><b>${c.name}</b> - ${c.phone}</p>
+      <p>Cantidad: ${c.tickets_count}</p>
+      <a href="${c.image_url}" target="_blank">
+        <img src="${c.image_url}">
+      </a>
+      <button onclick="aprobar(${c.id})">✅ Aprobar</button>
+      <button onclick="rechazar(${c.id})">❌ Rechazar</button>
+    `;
+    div.appendChild(card);
+  });
+}
+
+// ================= APROBAR =================
+async function aprobar(id) {
+  if (!confirm("¿Aprobar esta compra?")) return;
+
+  await supa.from("purchases").update({ status: "approved" }).eq("id", id);
+  await supa.from("tickets").update({ status: "sold" }).eq("purchase_id", id);
+
+  alert("Compra aprobada");
+  cargarPendientes();
+}
+
+// ================= RECHAZAR =================
+async function rechazar(id) {
+  if (!confirm("¿Rechazar y liberar tickets?")) return;
+
+  await supa.from("tickets").update({ status: "available", purchase_id: null }).eq("purchase_id", id);
+  await supa.from("purchases").update({ status: "rejected" }).eq("id", id);
+
+  alert("Compra rechazada");
+  cargarPendientes();
+}
+
+// ================= TICKETS =================
+async function cargarTickets() {
+  const { data } = await supa.from("tickets").select("*").order("ticket_number");
+
+  const div = document.getElementById("listaTickets");
+  div.innerHTML = "";
+
+  data.forEach(t => {
+    const d = document.createElement("div");
+    d.innerText = `${t.ticket_number} - ${t.status}`;
+    div.appendChild(d);
+  });
+}
+
+// ================= BUSCAR =================
+async function buscarTicket() {
+  const n = document.getElementById("buscarNumero").value;
+
+  const { data } = await supa
+    .from("tickets")
+    .select("*, purchases(*)")
+    .eq("ticket_number", n)
+    .single();
+
+  const div = document.getElementById("resultadoBusqueda");
+
+  if (!data) {
+    div.innerText = "❌ No encontrado";
+    return;
+  }
+
+  if (!data.purchases) {
+    div.innerText = "⚠️ Ticket sin dueño aún";
+    return;
+  }
+
+  div.innerHTML = `
+    <p>🎟 Ticket: ${data.ticket_number}</p>
+    <p>👤 Nombre: ${data.purchases.name}</p>
+    <p>📞 Teléfono: ${data.purchases.phone}</p>
+    <p>📧 Email: ${data.purchases.email}</p>
+  `;
+}
+</script>
+
+</body>
+</html>
