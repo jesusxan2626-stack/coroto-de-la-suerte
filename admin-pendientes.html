@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Compras por aprobar</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background: #0b1a33;
+  color: white;
+  margin: 0;
+  padding: 15px;
+}
+
+h1 {
+  text-align: center;
+}
+
+.compra {
+  background: #122654;
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.botones {
+  display: flex;
+  gap: 10px;
+}
+
+.botones button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.aprobar { background: #00c853; }
+.rechazar { background: #ff5252; }
+.volver { background: #777; width: 100%; margin-bottom: 15px; }
+
+img {
+  width: 100%;
+  border-radius: 8px;
+  margin-top: 10px;
+}
+</style>
+</head>
+<body>
+
+<h1>⏳ Compras por aprobar</h1>
+
+<button class="volver" onclick="volver()">⬅️ Volver al menú</button>
+
+<div id="lista"></div>
+
+<script>
+// 🔐 PROTECCIÓN LOGIN
+if (localStorage.getItem("admin_auth") !== "ok") {
+  location.href = "login.html";
+}
+
+// ================= SUPABASE =================
+const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
+const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
+const supa = supabase.createClient(supabaseUrl, supabaseKey);
+
+// ================= CARGAR =================
+async function cargar() {
+  const { data, error } = await supa
+    .from("purchases")
+    .select("*")
+    .eq("status", "pending")
+    .order("id", { ascending: false });
+
+  if (error) {
+    alert("Error cargando compras");
+    console.error(error);
+    return;
+  }
+
+  const div = document.getElementById("lista");
+  div.innerHTML = "";
+
+  if (data.length === 0) {
+    div.innerHTML = "<p style='text-align:center'>No hay compras pendientes.</p>";
+    return;
+  }
+
+  data.forEach(c => {
+    const card = document.createElement("div");
+    card.className = "compra";
+
+    card.innerHTML = `
+      <p><b>👤 Nombre:</b> ${c.name}</p>
+      <p><b>📞 Teléfono:</b> ${c.phone}</p>
+      <p><b>📧 Email:</b> ${c.email || ""}</p>
+      <p><b>💳 Referencia:</b> ${c.reference}</p>
+      <p><b>🎟 Cantidad:</b> ${c.tickets_count}</p>
+
+      <p><b>🧾 Comprobante:</b></p>
+      <a href="${c.image_url}" target="_blank">
+        <img src="${c.image_url}">
+      </a>
+
+      <div class="botones">
+        <button class="aprobar" onclick="aprobar(${c.id})">✅ Aprobar</button>
+        <button class="rechazar" onclick="rechazar(${c.id})">❌ Rechazar</button>
+      </div>
+    `;
+
+    div.appendChild(card);
+  });
+}
+
+// ================= APROBAR =================
+async function aprobar(id) {
+  if (!confirm("¿Aprobar esta compra?")) return;
+
+  await supa.from("purchases").update({ status: "approved" }).eq("id", id);
+  await supa.from("tickets").update({ status: "sold" }).eq("purchase_id", id);
+
+  alert("✅ Compra aprobada");
+  cargar();
+}
+
+// ================= RECHAZAR =================
+async function rechazar(id) {
+  if (!confirm("¿Rechazar esta compra y liberar los tickets?")) return;
+
+  await supa.from("tickets")
+    .update({ status: "available", purchase_id: null })
+    .eq("purchase_id", id);
+
+  await supa.from("purchases").update({ status: "rejected" }).eq("id", id);
+
+  alert("❌ Compra rechazada");
+  cargar();
+}
+
+function volver() {
+  location.href = "panel-7F3K9A2X.html";
+}
+
+cargar();
+</script>
+
+</body>
+</html>
