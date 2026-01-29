@@ -105,9 +105,9 @@ input, button {
 const PRECIO = 520;
 const RAFFLE_ID = 1;
 
-// SUPABASE
+// ✅ TUS DATOS REALES DE SUPABASE
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
-const supabaseKey = "TU_PUBLIC_KEY_AQUI"; // ⚠️ NO CAMBIES SI YA FUNCIONA
+const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 const supa = supabase.createClient(supabaseUrl, supabaseKey);
 
 // ================= LÓGICA =================
@@ -178,7 +178,7 @@ async function enviar() {
 
     if (errCompra) throw errCompra;
 
-    // 3️⃣ Reservar tickets usando la función
+    // 3️⃣ Reservar tickets
     const { data: numeros, error: errReserva } = await supa.rpc("reserve_tickets", {
       p_raffle_id: RAFFLE_ID,
       p_quantity: cantidad,
