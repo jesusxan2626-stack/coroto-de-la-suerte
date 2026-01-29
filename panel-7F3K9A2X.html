@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Admin Coroto de la Suerte</title>
+<title>Admin - Rifas</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -15,17 +15,7 @@ body {
   margin: 0;
   padding: 15px;
 }
-
-h1 {
-  text-align: center;
-  margin-bottom: 20px;
-}
-
-h2 {
-  margin-top: 30px;
-  border-bottom: 1px solid #2a3f6f;
-  padding-bottom: 5px;
-}
+h1,h2 { text-align:center; }
 
 .compra {
   background: #122654;
@@ -34,13 +24,9 @@ h2 {
   margin-bottom: 15px;
 }
 
-.estado {
-  font-weight: bold;
-}
-
 .pendiente { color: orange; }
 .aprobado { color: #00ff88; }
-.rechazado { color: #ff5252; }
+.rechazado { color: red; }
 
 .botones {
   display: flex;
@@ -48,50 +34,37 @@ h2 {
   margin-top: 10px;
 }
 
-.botones button {
-  flex: 1;
+button {
   padding: 10px;
   border: none;
   border-radius: 8px;
-  font-size: 16px;
   font-weight: bold;
+  font-size: 16px;
 }
 
-.aprobar { background: #00c853; }
-.rechazar { background: #ff5252; }
+.aprobar { background:#00c853; }
+.rechazar { background:#ff5252; }
 
 img {
-  width: 100%;
-  border-radius: 8px;
-  margin-top: 10px;
-}
-
-input {
-  width: 100%;
-  padding: 10px;
-  border-radius: 8px;
-  border: none;
-  margin-bottom: 10px;
+  width:100%;
+  max-width:300px;
+  border-radius:8px;
+  margin-top:10px;
 }
 </style>
 </head>
 <body>
 
-<h1>🛠 ADMIN - Coroto de la Suerte</h1>
+<h1>🛠 Panel de Administración</h1>
 
-<h2>⏳ Compras por aprobar</h2>
+<h2>⏳ Por aprobar</h2>
 <div id="pendientes"></div>
 
-<h2>✅ Compras aprobadas</h2>
+<h2>✅ Aprobadas</h2>
 <div id="aprobadas"></div>
 
-<h2>❌ Compras rechazadas</h2>
+<h2>❌ Rechazadas</h2>
 <div id="rechazadas"></div>
-
-<h2>🔎 Buscar ticket ganador</h2>
-<input id="buscarTicket" placeholder="Ej: 0001">
-<button onclick="buscarTicket()">Buscar</button>
-<div id="resultadoTicket"></div>
 
 <script>
 // ================= SUPABASE =================
@@ -99,9 +72,10 @@ const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 const supa = supabase.createClient(supabaseUrl, supabaseKey);
 
-// ================= CARGAR COMPRAS =================
+// ================= CARGAR =================
 async function cargar() {
-  const { data, error } = await supa
+
+  const { data: compras, error } = await supa
     .from("purchases")
     .select("*")
     .order("id", { ascending: false });
@@ -112,56 +86,52 @@ async function cargar() {
     return;
   }
 
-  document.getElementById("pendientes").innerHTML = "";
-  document.getElementById("aprobadas").innerHTML = "";
-  document.getElementById("rechazadas").innerHTML = "";
+  pendientes.innerHTML = "";
+  aprobadas.innerHTML = "";
+  rechazadas.innerHTML = "";
 
-  for (const c of data) {
-    const estadoClass =
-      c.status === "pending" ? "pendiente" :
-      c.status === "approved" ? "aprobado" :
-      "rechazado";
+  for (let c of compras) {
 
-    // Buscar tickets de esta compra
+    // 🔥 BUSCAR LOS TICKETS REALES DE ESTA COMPRA
     const { data: tickets } = await supa
       .from("tickets")
       .select("ticket_number")
-      .eq("purchase_id", c.id);
+      .eq("purchase_id", c.id)
+      .order("ticket_number");
 
-    const listaTickets = tickets && tickets.length
-      ? tickets.map(t => t.ticket_number).join(", ")
-      : "N/A";
+    const cantidad = tickets.length;
+    const numeros = tickets.map(t => t.ticket_number).join(", ");
 
-    const card = document.createElement("div");
-    card.className = "compra";
+    const estadoClass =
+      c.status === "pending" ? "pendiente" :
+      c.status === "approved" ? "aprobado" : "rechazado";
 
-    card.innerHTML = `
+    const div = document.createElement("div");
+    div.className = "compra";
+
+    div.innerHTML = `
       <p><b>👤 Nombre:</b> ${c.name}</p>
       <p><b>📞 Teléfono:</b> ${c.phone}</p>
       <p><b>💳 Referencia:</b> ${c.reference}</p>
-      <p><b>🎟 Cantidad:</b> ${c.tickets_count}</p>
-      <p><b>🎫 Números:</b> ${listaTickets}</p>
-      <p><b>📌 Estado:</b> <span class="estado ${estadoClass}">${c.status}</span></p>
+      <p><b>🎟 Cantidad:</b> ${cantidad}</p>
+      <p><b>🎫 Números:</b> ${numeros || "N/A"}</p>
+      <p><b>📌 Estado:</b> <span class="${estadoClass}">${c.status}</span></p>
 
       <a href="${c.image_url}" target="_blank">
         <img src="${c.image_url}">
       </a>
 
       ${c.status === "pending" ? `
-      <div class="botones">
-        <button class="aprobar" onclick="aprobar(${c.id})">✅ Aprobar</button>
-        <button class="rechazar" onclick="rechazar(${c.id})">❌ Rechazar</button>
-      </div>
+        <div class="botones">
+          <button class="aprobar" onclick="aprobar(${c.id})">✅ Aprobar</button>
+          <button class="rechazar" onclick="rechazar(${c.id})">❌ Rechazar</button>
+        </div>
       ` : ``}
     `;
 
-    if (c.status === "pending") {
-      document.getElementById("pendientes").appendChild(card);
-    } else if (c.status === "approved") {
-      document.getElementById("aprobadas").appendChild(card);
-    } else {
-      document.getElementById("rechazadas").appendChild(card);
-    }
+    if (c.status === "pending") pendientes.appendChild(div);
+    else if (c.status === "approved") aprobadas.appendChild(div);
+    else rechazadas.appendChild(div);
   }
 }
 
@@ -169,15 +139,9 @@ async function cargar() {
 async function aprobar(id) {
   if (!confirm("¿Aprobar esta compra?")) return;
 
-  await supa.from("purchases")
-    .update({ status: "approved" })
-    .eq("id", id);
+  await supa.from("purchases").update({ status: "approved" }).eq("id", id);
+  await supa.from("tickets").update({ status: "sold" }).eq("purchase_id", id);
 
-  await supa.from("tickets")
-    .update({ status: "sold" })
-    .eq("purchase_id", id);
-
-  alert("✅ Compra aprobada");
   cargar();
 }
 
@@ -189,48 +153,9 @@ async function rechazar(id) {
     .update({ status: "available", purchase_id: null })
     .eq("purchase_id", id);
 
-  await supa.from("purchases")
-    .update({ status: "rejected" })
-    .eq("id", id);
+  await supa.from("purchases").update({ status: "rejected" }).eq("id", id);
 
-  alert("❌ Compra rechazada");
   cargar();
-}
-
-// ================= BUSCAR TICKET =================
-async function buscarTicket() {
-  const numero = document.getElementById("buscarTicket").value.trim();
-  if (!numero) return;
-
-  const { data, error } = await supa
-    .from("tickets")
-    .select("ticket_number, purchases(*)")
-    .eq("ticket_number", numero)
-    .single();
-
-  const div = document.getElementById("resultadoTicket");
-
-  if (error || !data) {
-    div.innerHTML = "<p>❌ Ticket no encontrado</p>";
-    return;
-  }
-
-  if (!data.purchases) {
-    div.innerHTML = "<p>⚠️ Ese ticket no está vendido</p>";
-    return;
-  }
-
-  const c = data.purchases;
-
-  div.innerHTML = `
-    <div class="compra">
-      <p><b>🎫 Ticket:</b> ${data.ticket_number}</p>
-      <p><b>👤 Nombre:</b> ${c.name}</p>
-      <p><b>📞 Teléfono:</b> ${c.phone}</p>
-      <p><b>💳 Referencia:</b> ${c.reference}</p>
-      <p><b>📌 Estado:</b> ${c.status}</p>
-    </div>
-  `;
 }
 
 // ================= INIT =================
