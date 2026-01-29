@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Admin - Rifas</title>
+<title>Admin Coroto de la Suerte</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -18,28 +18,13 @@ body {
 
 h1 {
   text-align: center;
-}
-
-.menu {
-  display: flex;
-  gap: 10px;
   margin-bottom: 20px;
 }
 
-.menu button {
-  flex: 1;
-  padding: 10px;
-  font-weight: bold;
-  border-radius: 8px;
-  border: none;
-}
-
-.section {
-  display: none;
-}
-
-.section.active {
-  display: block;
+h2 {
+  margin-top: 30px;
+  border-bottom: 1px solid #2a3f6f;
+  padding-bottom: 5px;
 }
 
 .compra {
@@ -49,160 +34,207 @@ h1 {
   margin-bottom: 15px;
 }
 
+.estado {
+  font-weight: bold;
+}
+
+.pendiente { color: orange; }
+.aprobado { color: #00ff88; }
+.rechazado { color: #ff5252; }
+
+.botones {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.botones button {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: bold;
+}
+
+.aprobar { background: #00c853; }
+.rechazar { background: #ff5252; }
+
 img {
   width: 100%;
   border-radius: 8px;
+  margin-top: 10px;
+}
+
+input {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: none;
+  margin-bottom: 10px;
 }
 </style>
 </head>
 <body>
 
-<h1>🛠 Panel Administrativo</h1>
+<h1>🛠 ADMIN - Coroto de la Suerte</h1>
 
-<button onclick="salir()">🚪 Cerrar sesión</button>
+<h2>⏳ Compras por aprobar</h2>
+<div id="pendientes"></div>
 
-<div class="menu">
-  <button onclick="ver('pendientes')">⏳ Por aprobar</button>
-  <button onclick="ver('tickets')">🎟 Tickets en sistema</button>
-  <button onclick="ver('buscar')">🔍 Buscar ticket</button>
-</div>
+<h2>✅ Compras aprobadas</h2>
+<div id="aprobadas"></div>
 
-<div id="pendientes" class="section active">
-  <h2>⏳ Compras pendientes</h2>
-  <div id="listaPendientes"></div>
-</div>
+<h2>❌ Compras rechazadas</h2>
+<div id="rechazadas"></div>
 
-<div id="tickets" class="section">
-  <h2>🎟 Todos los tickets</h2>
-  <div id="listaTickets"></div>
-</div>
-
-<div id="buscar" class="section">
-  <h2>🔍 Buscar ticket ganador</h2>
-  <input id="buscarNumero" placeholder="Ej: 0001">
-  <button onclick="buscarTicket()">Buscar</button>
-  <div id="resultadoBusqueda"></div>
-</div>
+<h2>🔎 Buscar ticket ganador</h2>
+<input id="buscarTicket" placeholder="Ej: 0001">
+<button onclick="buscarTicket()">Buscar</button>
+<div id="resultadoTicket"></div>
 
 <script>
-// 🔐 PROTECCIÓN
-if (localStorage.getItem("admin_auth") !== "ok") {
-  location.href = "login.html";
-}
-
 // ================= SUPABASE =================
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 const supa = supabase.createClient(supabaseUrl, supabaseKey);
 
-// ================= MENU =================
-function ver(id) {
-  document.querySelectorAll(".section").forEach(s => s.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
-}
-
-// ================= SALIR =================
-function salir() {
-  localStorage.removeItem("admin_auth");
-  location.href = "login.html";
-}
-
-// ================= CARGAR TODO =================
-cargarPendientes();
-cargarTickets();
-
-// ================= PENDIENTES =================
-async function cargarPendientes() {
-  const { data } = await supa
+// ================= CARGAR COMPRAS =================
+async function cargar() {
+  const { data, error } = await supa
     .from("purchases")
     .select("*")
-    .eq("status", "pending")
     .order("id", { ascending: false });
 
-  const div = document.getElementById("listaPendientes");
-  div.innerHTML = "";
+  if (error) {
+    alert("Error cargando compras");
+    console.error(error);
+    return;
+  }
 
-  data.forEach(c => {
+  document.getElementById("pendientes").innerHTML = "";
+  document.getElementById("aprobadas").innerHTML = "";
+  document.getElementById("rechazadas").innerHTML = "";
+
+  for (const c of data) {
+    const estadoClass =
+      c.status === "pending" ? "pendiente" :
+      c.status === "approved" ? "aprobado" :
+      "rechazado";
+
+    // Buscar tickets de esta compra
+    const { data: tickets } = await supa
+      .from("tickets")
+      .select("ticket_number")
+      .eq("purchase_id", c.id);
+
+    const listaTickets = tickets && tickets.length
+      ? tickets.map(t => t.ticket_number).join(", ")
+      : "N/A";
+
     const card = document.createElement("div");
     card.className = "compra";
+
     card.innerHTML = `
-      <p><b>${c.name}</b> - ${c.phone}</p>
-      <p>Cantidad: ${c.tickets_count}</p>
+      <p><b>👤 Nombre:</b> ${c.name}</p>
+      <p><b>📞 Teléfono:</b> ${c.phone}</p>
+      <p><b>💳 Referencia:</b> ${c.reference}</p>
+      <p><b>🎟 Cantidad:</b> ${c.tickets_count}</p>
+      <p><b>🎫 Números:</b> ${listaTickets}</p>
+      <p><b>📌 Estado:</b> <span class="estado ${estadoClass}">${c.status}</span></p>
+
       <a href="${c.image_url}" target="_blank">
         <img src="${c.image_url}">
       </a>
-      <button onclick="aprobar(${c.id})">✅ Aprobar</button>
-      <button onclick="rechazar(${c.id})">❌ Rechazar</button>
+
+      ${c.status === "pending" ? `
+      <div class="botones">
+        <button class="aprobar" onclick="aprobar(${c.id})">✅ Aprobar</button>
+        <button class="rechazar" onclick="rechazar(${c.id})">❌ Rechazar</button>
+      </div>
+      ` : ``}
     `;
-    div.appendChild(card);
-  });
+
+    if (c.status === "pending") {
+      document.getElementById("pendientes").appendChild(card);
+    } else if (c.status === "approved") {
+      document.getElementById("aprobadas").appendChild(card);
+    } else {
+      document.getElementById("rechazadas").appendChild(card);
+    }
+  }
 }
 
 // ================= APROBAR =================
 async function aprobar(id) {
   if (!confirm("¿Aprobar esta compra?")) return;
 
-  await supa.from("purchases").update({ status: "approved" }).eq("id", id);
-  await supa.from("tickets").update({ status: "sold" }).eq("purchase_id", id);
+  await supa.from("purchases")
+    .update({ status: "approved" })
+    .eq("id", id);
 
-  alert("Compra aprobada");
-  cargarPendientes();
+  await supa.from("tickets")
+    .update({ status: "sold" })
+    .eq("purchase_id", id);
+
+  alert("✅ Compra aprobada");
+  cargar();
 }
 
 // ================= RECHAZAR =================
 async function rechazar(id) {
-  if (!confirm("¿Rechazar y liberar tickets?")) return;
+  if (!confirm("¿Rechazar esta compra y liberar tickets?")) return;
 
-  await supa.from("tickets").update({ status: "available", purchase_id: null }).eq("purchase_id", id);
-  await supa.from("purchases").update({ status: "rejected" }).eq("id", id);
+  await supa.from("tickets")
+    .update({ status: "available", purchase_id: null })
+    .eq("purchase_id", id);
 
-  alert("Compra rechazada");
-  cargarPendientes();
+  await supa.from("purchases")
+    .update({ status: "rejected" })
+    .eq("id", id);
+
+  alert("❌ Compra rechazada");
+  cargar();
 }
 
-// ================= TICKETS =================
-async function cargarTickets() {
-  const { data } = await supa.from("tickets").select("*").order("ticket_number");
-
-  const div = document.getElementById("listaTickets");
-  div.innerHTML = "";
-
-  data.forEach(t => {
-    const d = document.createElement("div");
-    d.innerText = `${t.ticket_number} - ${t.status}`;
-    div.appendChild(d);
-  });
-}
-
-// ================= BUSCAR =================
+// ================= BUSCAR TICKET =================
 async function buscarTicket() {
-  const n = document.getElementById("buscarNumero").value;
+  const numero = document.getElementById("buscarTicket").value.trim();
+  if (!numero) return;
 
-  const { data } = await supa
+  const { data, error } = await supa
     .from("tickets")
-    .select("*, purchases(*)")
-    .eq("ticket_number", n)
+    .select("ticket_number, purchases(*)")
+    .eq("ticket_number", numero)
     .single();
 
-  const div = document.getElementById("resultadoBusqueda");
+  const div = document.getElementById("resultadoTicket");
 
-  if (!data) {
-    div.innerText = "❌ No encontrado";
+  if (error || !data) {
+    div.innerHTML = "<p>❌ Ticket no encontrado</p>";
     return;
   }
 
   if (!data.purchases) {
-    div.innerText = "⚠️ Ticket sin dueño aún";
+    div.innerHTML = "<p>⚠️ Ese ticket no está vendido</p>";
     return;
   }
 
+  const c = data.purchases;
+
   div.innerHTML = `
-    <p>🎟 Ticket: ${data.ticket_number}</p>
-    <p>👤 Nombre: ${data.purchases.name}</p>
-    <p>📞 Teléfono: ${data.purchases.phone}</p>
-    <p>📧 Email: ${data.purchases.email}</p>
+    <div class="compra">
+      <p><b>🎫 Ticket:</b> ${data.ticket_number}</p>
+      <p><b>👤 Nombre:</b> ${c.name}</p>
+      <p><b>📞 Teléfono:</b> ${c.phone}</p>
+      <p><b>💳 Referencia:</b> ${c.reference}</p>
+      <p><b>📌 Estado:</b> ${c.status}</p>
+    </div>
   `;
 }
+
+// ================= INIT =================
+cargar();
 </script>
 
 </body>
