@@ -63,7 +63,6 @@ button {
 </div>
 
 <script>
-/* ================= CONFIG ================= */
 const PRECIO = 520;
 const RAFFLE_ID = 1;
 
@@ -71,8 +70,6 @@ const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 const supa = supabase.createClient(supabaseUrl, supabaseKey);
 
-/* ================= HELPERS ================= */
-// UUID compatible con móviles
 function uid() {
   return 'xxxxxxxxyxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random()*16|0;
@@ -81,7 +78,6 @@ function uid() {
   });
 }
 
-/* ================= UI ================= */
 const cantidadInput = document.getElementById("cantidad");
 const totalSpan = document.getElementById("total");
 const btnComprar = document.getElementById("btnComprar");
@@ -92,8 +88,9 @@ cantidadInput.addEventListener("input", () => {
 
 btnComprar.addEventListener("click", enviar);
 
-/* ================= ENVIAR ================= */
 async function enviar() {
+  alert("PASO 0: función enviar()");
+
   const nombre = document.getElementById("nombre").value.trim();
   const telefono = document.getElementById("telefono").value.trim();
   const correo = document.getElementById("correo").value.trim();
@@ -102,15 +99,13 @@ async function enviar() {
   const cantidad = parseInt(cantidadInput.value);
 
   if (!nombre || !telefono || !referencia || !file) {
-    alert("⚠️ Completa todos los datos");
+    alert("FALTAN DATOS");
     return;
   }
 
-  btnComprar.disabled = true;
-  btnComprar.innerText = "Enviando...";
-
   try {
-    /* 1️⃣ Subir imagen */
+    alert("PASO 1: subir imagen");
+
     const fileName = uid() + "_" + file.name;
     const upload = await supa.storage
       .from("comprobantes")
@@ -118,11 +113,14 @@ async function enviar() {
 
     if (upload.error) throw upload.error;
 
+    alert("PASO 1 OK");
+
     const { data: img } = supa.storage
       .from("comprobantes")
       .getPublicUrl(fileName);
 
-    /* 2️⃣ Insertar compra */
+    alert("PASO 2: insertar compra");
+
     const { data: compra, error } = await supa
       .from("purchases_new")
       .insert([{
@@ -140,7 +138,10 @@ async function enviar() {
 
     if (error) throw error;
 
-    /* 3️⃣ Reservar tickets */
+    alert("PASO 2 OK");
+
+    alert("PASO 3: reservar tickets");
+
     const { error: err2 } = await supa.rpc("reserve_tickets", {
       p_raffle_id: RAFFLE_ID,
       p_quantity: cantidad,
@@ -149,15 +150,11 @@ async function enviar() {
 
     if (err2) throw err2;
 
-    alert("✅ Compra enviada correctamente");
+    alert("PASO 3 OK – TODO BIEN");
     location.href = "index.html";
 
   } catch (e) {
-    console.error(e);
-    alert("❌ Error enviando compra");
-  } finally {
-    btnComprar.disabled = false;
-    btnComprar.innerText = "Comprar";
+    alert("❌ ERROR: " + e.message);
   }
 }
 </script>
