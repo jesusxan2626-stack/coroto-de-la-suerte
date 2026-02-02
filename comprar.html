@@ -154,8 +154,8 @@ async function enviar() {
     location.href = "index.html";
 
   } catch (e) {
-    alert("❌ ERROR: " + e.message);
-  }
+  alert("❌ ERROR REAL:\n" + JSON.stringify(e, null, 2));
+}
 }
 </script>
 
