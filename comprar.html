@@ -9,17 +9,44 @@
 
 <style>
 body {
+  font-family: Arial, sans-serif;
   background: #0b1a33;
   color: white;
-  font-family: Arial, sans-serif;
+  margin: 0;
   padding: 15px;
 }
 
 .card {
   background: #122654;
-  padding: 15px;
   border-radius: 12px;
+  padding: 15px;
   margin-bottom: 15px;
+}
+
+h1, h2 {
+  text-align: center;
+}
+
+.tickets-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  font-size: 26px;
+}
+
+.tickets-box button {
+  font-size: 30px;
+  width: 60px;
+  height: 60px;
+  border: none;
+  border-radius: 10px;
+}
+
+.total {
+  text-align: center;
+  font-size: 26px;
+  color: #00ff88;
 }
 
 input, button {
@@ -28,143 +55,142 @@ input, button {
   margin-top: 10px;
   border-radius: 8px;
   border: none;
-  font-size: 16px;
+  font-size: 18px;
 }
 
-button {
+.btn {
   background: #00c853;
+  color: black;
   font-weight: bold;
-  color: #000;
-}
-
-.total {
-  text-align: center;
-  font-size: 20px;
-  color: #00e676;
-  margin-bottom: 10px;
 }
 </style>
 </head>
 <body>
 
-<h2 style="text-align:center">🎟 Comprar Tickets</h2>
+<h1>🎟 Comprar Tickets</h1>
 
 <div class="card">
-  <p><b>Precio por ticket:</b> 20 Bs</p>
+  <h2>Selecciona la cantidad</h2>
 
-  <input type="number" id="cantidad" placeholder="Cantidad de tickets" min="1">
+  <div class="tickets-box">
+    <button onclick="cambiar(-1)">−</button>
+    <span id="cantidad">1</span>
+    <button onclick="cambiar(1)">+</button>
+  </div>
 
-  <div class="total" id="total">Total: 0 Bs</div>
+  <p class="total">Total: <span id="total">520</span> Bs</p>
 </div>
 
 <div class="card">
-  <h3>🏦 Datos de pago</h3>
-  <p>Pago móvil: <b>04264463109</b></p>
-  <p>Cédula: <b>V-3.690.403</b></p>
-  <p>Banco: <b>Banco Venezuela</b></p>
+  <h2>🏦 Datos de pago</h2>
+  <p><b>Pago móvil:</b> 04264463109</p>
+  <p><b>Cédula:</b> V-3.690.403</p>
+  <p><b>Banco:</b> Banco Venezuela</p>
 </div>
 
 <div class="card">
-  <input type="text" id="nombre" placeholder="Nombre completo">
-  <input type="tel" id="telefono" placeholder="Teléfono">
-  <input type="email" id="email" placeholder="Correo (opcional)">
-  <input type="text" id="referencia" placeholder="Referencia de pago">
+  <h2>📤 Enviar comprobante</h2>
 
-  <input type="file" id="comprobante" accept="image/*">
+  <input id="nombre" placeholder="Nombre completo">
+  <input id="telefono" placeholder="Teléfono">
+  <input id="mail" placeholder="Correo (opcional)">
+  <input id="referencia" placeholder="Últimos 4 dígitos">
 
-  <button onclick="enviarCompra()">💳 Comprar</button>
+  <input id="comprobante" type="file" accept="image/*">
+
+  <button class="btn" onclick="enviar()">💳 Comprar</button>
 </div>
 
 <script>
-// ================= SUPABASE =================
-const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
-const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
-const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-
-// ================= VARIABLES =================
-const PRECIO = 20;
+// ================= CONFIG =================
+const PRECIO = 520;
 const RAFFLE_ID = 1;
 
-// ================= TOTAL =================
-document.getElementById("cantidad").addEventListener("input", () => {
-  const cant = Number(document.getElementById("cantidad").value) || 0;
-  document.getElementById("total").innerText = `Total: ${cant * PRECIO} Bs`;
-});
+const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
+const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
+const supa = supabase.createClient(supabaseUrl, supabaseKey);
+
+// ================= LOGICA TICKETS =================
+let cantidad = 1;
+
+const cantidadSpan = document.getElementById("cantidad");
+const totalSpan = document.getElementById("total");
+
+function actualizar() {
+  cantidadSpan.innerText = cantidad;
+  totalSpan.innerText = cantidad * PRECIO;
+}
+
+function cambiar(valor) {
+  cantidad += valor;
+  if (cantidad < 1) cantidad = 1;
+  if (cantidad > 100) cantidad = 100;
+  actualizar();
+}
+
+actualizar();
 
 // ================= ENVIAR COMPRA =================
-async function enviarCompra() {
+async function enviar() {
+  const nombre = document.getElementById("nombre").value.trim();
+  const telefono = document.getElementById("telefono").value.trim();
+  const correo = document.getElementById("mail").value.trim();
+  const referencia = document.getElementById("referencia").value.trim();
+  const comprobante = document.getElementById("comprobante").files[0];
+
+  if (!nombre || !telefono || !referencia || !comprobante) {
+    alert("⚠️ Completa todos los datos");
+    return;
+  }
+
   try {
-    const cantidad = Number(document.getElementById("cantidad").value);
-    const nombre = document.getElementById("nombre").value.trim();
-    const telefono = document.getElementById("telefono").value.trim();
-    const email = document.getElementById("email").value.trim();
-    const referencia = document.getElementById("referencia").value.trim();
-    const file = document.getElementById("comprobante").files[0];
+    // 1️⃣ Subir imagen
+    const fileName = crypto.randomUUID() + "_" + comprobante.name;
+    await supa.storage.from("comprobantes").upload(fileName, comprobante);
 
-    if (!cantidad || !nombre || !telefono || !referencia || !file) {
-      alert("⚠️ Completa todos los campos obligatorios");
-      return;
-    }
-
-    // 1️⃣ Reservar tickets
-    const { data: reserva, error: errReserva } = await supabase.rpc(
-      "reserve_tickets",
-      {
-        p_raffle_id: RAFFLE_ID,
-        p_quantity: cantidad,
-        p_price: PRECIO
-      }
-    );
-
-    if (errReserva) {
-      alert("❌ Error reservando tickets");
-      console.error(errReserva);
-      return;
-    }
-
-    const purchase_id = reserva.purchase_id;
-
-    // 2️⃣ Subir comprobante
-    const fileName = `comp_${purchase_id}_${Date.now()}.jpg`;
-
-    const { error: errUpload } = await supabase.storage
-      .from("comprobantes")
-      .upload(fileName, file);
-
-    if (errUpload) {
-      alert("❌ Error subiendo comprobante");
-      console.error(errUpload);
-      return;
-    }
-
-    const { data: publicUrl } = supabase.storage
+    const { data: urlData } = supa
+      .storage
       .from("comprobantes")
       .getPublicUrl(fileName);
 
-    // 3️⃣ Guardar datos compra
-    const { error: errUpdate } = await supabase
+    // 2️⃣ Crear compra
+    const { data: compra, error: errCompra } = await supa
       .from("purchases")
-      .update({
+      .insert([{
         name: nombre,
         phone: telefono,
-        email: email,
+        email: correo,
         reference: referencia,
-        image_url: publicUrl.publicUrl
-      })
-      .eq("id", purchase_id);
+        tickets_count: cantidad,
+        raffle_id: RAFFLE_ID,
+        status: "pending",
+        image_url: urlData.publicUrl
+      }])
+      .select()
+      .single();
 
-    if (errUpdate) {
-      alert("❌ Error guardando compra");
-      console.error(errUpdate);
-      return;
-    }
+    if (errCompra) throw errCompra;
 
-    alert("✅ Compra enviada. Espera aprobación.");
-    location.reload();
+    // 3️⃣ Reservar tickets (FUNCIÓN QUE YA TENÍAS)
+    const { error: errReserva } = await supa.rpc("reserve_tickets", {
+      p_raffle_id: RAFFLE_ID,
+      p_quantity: cantidad,
+      p_order_id: compra.id
+    });
+
+    if (errReserva) throw errReserva;
+
+    alert(
+      "✅ Compra enviada correctamente\n" +
+      "🎟 Tickets reservados: " + cantidad + "\n" +
+      "⏳ Esperando aprobación"
+    );
+
+    location.href = "index.html";
 
   } catch (e) {
-    alert("❌ Error inesperado");
     console.error(e);
+    alert("❌ Error enviando la compra");
   }
 }
 </script>
