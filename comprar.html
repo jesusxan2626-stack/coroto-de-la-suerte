@@ -1,214 +1,66 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="UTF-8">
-<title>Comprar Tickets</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<style>
-body {
-  font-family: Arial, sans-serif;
-  background: #0b1a33;
-  color: white;
-  margin: 0;
-  padding: 15px;
-}
-
-.card {
-  background: #122654;
-  border-radius: 12px;
-  padding: 15px;
-  margin-bottom: 15px;
-}
-
-h1, h2 {
-  text-align: center;
-}
-
-.tickets-box {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-  font-size: 24px;
-}
-
-.tickets-box button {
-  font-size: 30px;
-  width: 60px;
-  height: 60px;
-  border: none;
-  border-radius: 10px;
-}
-
-.total {
-  text-align: center;
-  font-size: 28px;
-  color: #00ff88;
-}
-
-input, button {
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  border-radius: 8px;
-  border: none;
-  font-size: 18px;
-}
-
-.btn {
-  background: #00c853;
-  color: black;
-  font-size: 18px;
-  font-weight: bold;
-}
-</style>
-</head>
-<body>
-
-<h1>🎟 Comprar Tickets</h1>
-
-<div class="card">
-  <h2>Selecciona la cantidad</h2>
-  <div class="tickets-box">
-    <button onclick="cambiar(-1)">-</button>
-    <span id="cantidad"></span>
-    <button onclick="cambiar(1)">+</button>
-  </div>
-  <p class="total">Total: <span id="total">520</span> Bs</p>
-</div>
-
-<div class="card">
-  <h2>🏦 Datos de pago</h2>
-  <p><b>Pago móvil:</b> 04264463109</p>
-  <p><b>Cédula:</b> V-3.690.403</p>
-  <p><b>Banco:</b> Banco Venezuela</p>
-</div>
-
-<div class="card">
-  <h2>📤 Enviar comprobante</h2>
-
-  <input id="nombre" placeholder="Nombre completo">
-  <input id="telefono" placeholder="Teléfono">
-  <input id="mail" placeholder="Correo">
-  <input id="referencia" placeholder="Últimos 4 dígitos">
-
-  <input id="comprobante" type="file" accept="image/*">
-
-  <button class="btn" id="btnEnviar" onclick="enviar()">Enviar comprobante</button>
-</div>
-
 <script>
-// ================= CONFIG =================
-const PRECIO = 520;
-const RAFFLE_ID = 1;
-
-// ✅ TUS DATOS REALES DE SUPABASE
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
-const supa = supabase.createClient(supabaseUrl, supabaseKey);
+const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-// ================= LÓGICA =================
-let cantidad = 1;
-let enviando = false;
-
-const cantidadSpan = document.getElementById("cantidad");
-const totalSpan = document.getElementById("total");
-
-function actualizar() {
-  cantidadSpan.innerText = cantidad;
-  totalSpan.innerText = cantidad * PRECIO;
-}
-
-function cambiar(valor) {
-  cantidad += valor;
-  if (cantidad < 1) cantidad = 1;
-  if (cantidad > 100) cantidad = 100;
-  actualizar();
-}
-
-actualizar();
-
-// ================= ENVIAR =================
-async function enviar() {
-
-  if (enviando) return;
-
-  const nombre = document.getElementById("nombre").value.trim();
-  const telefono = document.getElementById("telefono").value.trim();
-  const correo = document.getElementById("mail").value.trim();
-  const referencia = document.getElementById("referencia").value.trim();
-  const comprobante = document.getElementById("comprobante").files[0];
-
-  if (!nombre || !telefono || !referencia || !comprobante) {
-    alert("⚠️ Completa todos los datos.");
-    return;
-  }
-
+async function enviarCompra() {
   try {
-    enviando = true;
-    const btn = document.getElementById("btnEnviar");
-    btn.disabled = true;
-    btn.innerText = "⏳ Enviando...";
+    const nombre = document.getElementById("nombre").value;
+    const telefono = document.getElementById("telefono").value;
+    const email = document.getElementById("email").value;
+    const referencia = document.getElementById("referencia").value;
+    const cantidad = parseInt(document.getElementById("cantidad").value);
+    const file = document.getElementById("comprobante").files[0];
 
-    // 1️⃣ Subir imagen
-    const nombreArchivo = crypto.randomUUID() + "_" + comprobante.name;
-    await supa.storage.from("comprobantes").upload(nombreArchivo, comprobante);
+    if (!nombre || !telefono || !referencia || !cantidad || !file) {
+      alert("Completa todos los campos");
+      return;
+    }
 
-    const { data: urlData } = supa.storage.from("comprobantes").getPublicUrl(nombreArchivo);
-    const imagenUrl = urlData.publicUrl;
+    // 📤 Subir imagen
+    const fileName = `${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase
+      .storage
+      .from("comprobantes")
+      .upload(fileName, file);
 
-    // 2️⃣ Crear compra
-    const { data: compra, error: errCompra } = await supa
+    if (uploadError) throw uploadError;
+
+    const image_url = `${supabaseUrl}/storage/v1/object/public/comprobantes/${fileName}`;
+
+    // 🧾 Crear compra
+    const { data: compra, error } = await supabase
       .from("purchases")
       .insert([{
         name: nombre,
         phone: telefono,
-        email: correo,
+        email: email,
         reference: referencia,
-        image_url: imagenUrl,
         tickets_count: cantidad,
-        raffle_id: RAFFLE_ID,
-        status: "pending"
+        status: "pending",
+        image_url
       }])
       .select()
       .single();
 
-    if (errCompra) throw errCompra;
+    if (error) throw error;
 
-    // 3️⃣ Reservar tickets
-    const { data: numeros, error: errReserva } = await supa.rpc("reserve_tickets", {
-      p_raffle_id: RAFFLE_ID,
+    // 🎟 Reservar tickets
+    const { error: reserveError } = await supabase.rpc("reserve_tickets", {
+      p_raffle_id: 1,
       p_quantity: cantidad,
       p_order_id: compra.id
     });
 
-    if (errReserva) throw errReserva;
+    if (reserveError) throw reserveError;
 
-    const lista = numeros.map(n => n.ticket_number).join(", ");
+    alert("✅ Compra enviada correctamente");
+    location.reload();
 
-    alert(
-      "✅ Compra enviada correctamente.\n\n" +
-      "🎟 Tus números reservados son:\n" +
-      lista +
-      "\n\n⏳ Cuando se apruebe el pago quedarán confirmados."
-    );
-
-    location.href = "index.html";
-
-  } catch (e) {
-    console.error(e);
+  } catch (err) {
+    console.error(err);
     alert("❌ Error enviando la compra");
-  } finally {
-    enviando = false;
-    const btn = document.getElementById("btnEnviar");
-    btn.disabled = false;
-    btn.innerText = "Enviar comprobante";
   }
 }
 </script>
-
-</body>
-</html>
