@@ -2,25 +2,26 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>Panel Admin</title>
+<title>Panel Administrativo</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
 body {
-  font-family: Arial, sans-serif;
   background: #0b1a33;
   color: white;
+  font-family: Arial, sans-serif;
   margin: 0;
-  padding: 15px;
+  padding: 20px;
 }
 
 h1 {
   text-align: center;
+  margin-bottom: 25px;
 }
 
 .menu {
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 15px;
   max-width: 400px;
   margin: auto;
@@ -29,41 +30,56 @@ h1 {
 button {
   padding: 15px;
   font-size: 18px;
-  border-radius: 10px;
   border: none;
+  border-radius: 10px;
   font-weight: bold;
+  cursor: pointer;
 }
 
-.pendientes { background: orange; }
-.aprobadas { background: #00c853; }
-.rechazadas { background: #ff5252; }
-.buscar { background: #03a9f4; }
-.salir { background: #777; }
+.pendientes { background: orange; color: black; }
+.aprobadas { background: #00c853; color: black; }
+.rechazadas { background: #ff5252; color: white; }
+.buscar { background: #2979ff; color: white; }
+.salir { background: #555; color: white; }
 </style>
 </head>
 <body>
 
-<h1>🛠 Panel de Administración</h1>
-
-<div class="menu">
-  <button class="pendientes" onclick="ir('admin-pendientes.html')">⏳ Compras por aprobar</button>
-  <button class="aprobadas" onclick="ir('admin-aprobadas.html')">✅ Compras aprobadas</button>
-  <button class="rechazadas" onclick="ir('admin-rechazadas.html')">❌ Compras rechazadas</button>
-  <button class="buscar" onclick="ir('admin-buscar-ticket.html')">🔍 Buscar ticket</button>
-  <button class="salir" onclick="salir()">🚪 Cerrar sesión</button>
-</div>
-
 <script>
-// 🔐 PROTECCIÓN
+// 🔐 PROTECCIÓN LOGIN
 if (localStorage.getItem("admin_auth") !== "ok") {
   location.href = "login.html";
 }
+</script>
 
-function ir(p) {
-  location.href = p;
-}
+<h1>🛠 Panel de Administración</h1>
 
-function salir() {
+<div class="menu">
+
+  <button class="pendientes" onclick="location.href='admin-pendientes.html'">
+    ⏳ Compras por aprobar
+  </button>
+
+  <button class="aprobadas" onclick="location.href='admin-aprobadas.html'">
+    ✅ Compras aprobadas
+  </button>
+
+  <button class="rechazadas" onclick="location.href='admin-rechazadas.html'">
+    ❌ Compras rechazadas
+  </button>
+
+  <button class="buscar" onclick="location.href='admin-buscar-ticket.html'">
+    🔎 Buscar ticket
+  </button>
+
+  <button class="salir" onclick="logout()">
+    🚪 Cerrar sesión
+  </button>
+
+</div>
+
+<script>
+function logout() {
   localStorage.removeItem("admin_auth");
   location.href = "login.html";
 }
