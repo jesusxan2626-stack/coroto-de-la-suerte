@@ -59,20 +59,29 @@ button {
   <input id="correo" placeholder="Correo (opcional)">
   <input id="referencia" placeholder="Últimos 4 dígitos">
   <input type="file" id="comprobante" accept="image/*">
-
-  <!-- IMPORTANTE: type="button" -->
   <button type="button" id="btnComprar">Comprar</button>
 </div>
 
 <script>
+/* ================= CONFIG ================= */
 const PRECIO = 520;
 const RAFFLE_ID = 1;
 
-// SUPABASE (FIJO)
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 const supa = supabase.createClient(supabaseUrl, supabaseKey);
 
+/* ================= HELPERS ================= */
+// UUID compatible con móviles
+function uid() {
+  return 'xxxxxxxxyxxx'.replace(/[xy]/g, function(c) {
+    const r = Math.random()*16|0;
+    const v = c === 'x' ? r : (r&0x3|0x8);
+    return v.toString(16);
+  });
+}
+
+/* ================= UI ================= */
 const cantidadInput = document.getElementById("cantidad");
 const totalSpan = document.getElementById("total");
 const btnComprar = document.getElementById("btnComprar");
@@ -81,28 +90,28 @@ cantidadInput.addEventListener("input", () => {
   totalSpan.innerText = cantidadInput.value * PRECIO;
 });
 
-// 🔥 ENGANCHE DIRECTO DEL BOTÓN
 btnComprar.addEventListener("click", enviar);
 
+/* ================= ENVIAR ================= */
 async function enviar() {
-  // PRUEBA RÁPIDA (NO BORRAR)
-  alert("Botón funciona");
-
-  const nombreVal = document.getElementById("nombre").value.trim();
-  const telefonoVal = document.getElementById("telefono").value.trim();
-  const correoVal = document.getElementById("correo").value.trim();
-  const referenciaVal = document.getElementById("referencia").value.trim();
+  const nombre = document.getElementById("nombre").value.trim();
+  const telefono = document.getElementById("telefono").value.trim();
+  const correo = document.getElementById("correo").value.trim();
+  const referencia = document.getElementById("referencia").value.trim();
   const file = document.getElementById("comprobante").files[0];
   const cantidad = parseInt(cantidadInput.value);
 
-  if (!nombreVal || !telefonoVal || !referenciaVal || !file) {
+  if (!nombre || !telefono || !referencia || !file) {
     alert("⚠️ Completa todos los datos");
     return;
   }
 
+  btnComprar.disabled = true;
+  btnComprar.innerText = "Enviando...";
+
   try {
-    // 1️⃣ Subir imagen
-    const fileName = crypto.randomUUID() + "_" + file.name;
+    /* 1️⃣ Subir imagen */
+    const fileName = uid() + "_" + file.name;
     const upload = await supa.storage
       .from("comprobantes")
       .upload(fileName, file);
@@ -113,14 +122,14 @@ async function enviar() {
       .from("comprobantes")
       .getPublicUrl(fileName);
 
-    // 2️⃣ Insert compra
+    /* 2️⃣ Insertar compra */
     const { data: compra, error } = await supa
       .from("purchases_new")
       .insert([{
-        name: nombreVal,
-        phone: telefonoVal,
-        email: correoVal,
-        reference: referenciaVal,
+        name: nombre,
+        phone: telefono,
+        email: correo,
+        reference: referencia,
         image_url: img.publicUrl,
         tickets_count: cantidad,
         raffle_id: RAFFLE_ID,
@@ -131,7 +140,7 @@ async function enviar() {
 
     if (error) throw error;
 
-    // 3️⃣ Reservar tickets
+    /* 3️⃣ Reservar tickets */
     const { error: err2 } = await supa.rpc("reserve_tickets", {
       p_raffle_id: RAFFLE_ID,
       p_quantity: cantidad,
@@ -146,6 +155,9 @@ async function enviar() {
   } catch (e) {
     console.error(e);
     alert("❌ Error enviando compra");
+  } finally {
+    btnComprar.disabled = false;
+    btnComprar.innerText = "Comprar";
   }
 }
 </script>
