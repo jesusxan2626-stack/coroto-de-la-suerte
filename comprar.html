@@ -1,218 +1,125 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<title>Comprar Tickets</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>Comprar Tickets</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<style>
-body {
-  font-family: Arial, sans-serif;
-  background: #0b1a33;
-  color: white;
-  margin: 0;
-  padding: 15px;
-}
-
-h1 {
-  text-align: center;
-}
-
-.tickets {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
-  gap: 10px;
-  margin-bottom: 20px;
-}
-
-.ticket {
-  padding: 12px;
-  border-radius: 8px;
-  text-align: center;
-  background: #1c2f5c;
-  cursor: pointer;
-}
-
-.ticket.selected {
-  background: #00c853;
-  color: black;
-}
-
-.resumen {
-  background: #122654;
-  padding: 15px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-}
-
-input, button {
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  border-radius: 8px;
-  border: none;
-  font-size: 16px;
-}
-
-button {
-  background: #00c853;
-  font-weight: bold;
-  cursor: pointer;
-}
-</style>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: #fff;
+      padding: 20px;
+      border-radius: 8px;
+    }
+    input, button {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    button {
+      background: #28a745;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    button:disabled {
+      background: #999;
+    }
+  </style>
 </head>
+
 <body>
+  <div class="container">
+    <h2>Comprar Tickets</h2>
 
-<h1>🎟 Comprar Tickets</h1>
+    <label>Cantidad de tickets</label>
+    <input type="number" id="quantity" min="1" value="1" />
 
-<div class="tickets" id="tickets"></div>
+    <label>Teléfono</label>
+    <input type="text" id="phone" />
 
-<div class="resumen">
-  <p>🎫 Tickets seleccionados: <b id="count">0</b></p>
-  <p>💰 Total: <b>$<span id="total">0</span></b></p>
+    <label>Email</label>
+    <input type="email" id="email" />
 
-  <input id="name" placeholder="Nombre completo">
-  <input id="phone" placeholder="Teléfono">
-  <input id="reference" placeholder="Referencia de pago">
-  <input id="image_url" placeholder="Link del comprobante (imagen)">
+    <label>Referencia de pago</label>
+    <input type="text" id="reference" />
 
-  <button onclick="comprar()">Comprar</button>
-</div>
+    <label>Link de imagen del comprobante</label>
+    <input type="text" id="image_url" />
 
-<script>
-// ================= SUPABASE =================
-const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
-const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
-const supa = supabase.createClient(supabaseUrl, supabaseKey);
+    <button id="buyBtn">Comprar</button>
 
-// ================= CONFIG =================
-// ⬇️⬇️⬇️ CAMBIA SOLO ESTE NÚMERO ⬇️⬇️⬇️
-const RAFFLE_ID = 1; // ← el id BIGINT real de raffles_new
+    <p id="msg"></p>
+  </div>
 
-let ticketPrice = 0;
-let selected = [];
+  <script>
+    // 🔐 SUPABASE (TU PROYECTO)
+    const supabaseUrl = 'https://hedwnykwnhrbnwfohntr.supabase.co';
+    const supabaseKey = 'sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM';
+    const supabase = supabase.createClient(supabaseUrl, supabaseKey);
 
-// ================= CARGAR RIFA =================
-async function cargarRifa() {
-  const { data, error } = await supa
-    .from("raffles_new")
-    .select("*")
-    .eq("id", RAFFLE_ID)
-    .single();
+    // 📌 ID DE LA RIFA (BIGINT)
+    const RAFFLE_ID = 1; // ← tu rifa existente
 
-  if (error || !data) {
-    alert("❌ Error cargando la rifa");
-    console.error(error);
-    return;
-  }
+    const buyBtn = document.getElementById('buyBtn');
+    const msg = document.getElementById('msg');
 
-  ticketPrice = Number(data.price);
-}
+    buyBtn.addEventListener('click', async () => {
+      buyBtn.disabled = true;
+      msg.innerText = 'Procesando compra...';
 
-// ================= CARGAR TICKETS =================
-async function cargarTickets() {
-  const { data, error } = await supa
-    .from("tickets")
-    .select("id, ticket_number")
-    .eq("raffle_id", RAFFLE_ID)
-    .eq("status", "available")
-    .order("ticket_number");
+      const quantity = parseInt(document.getElementById('quantity').value);
+      const phone = document.getElementById('phone').value;
+      const email = document.getElementById('email').value;
+      const reference = document.getElementById('reference').value;
+      const image_url = document.getElementById('image_url').value;
 
-  if (error) {
-    alert("❌ Error cargando tickets");
-    console.error(error);
-    return;
-  }
+      try {
+        // 1️⃣ CREAR COMPRA
+        const { data: purchase, error: purchaseError } = await supabase
+          .from('purchases_new')
+          .insert([{
+            phone,
+            email,
+            reference,
+            amount: quantity,
+            status: 'pending',
+            image_url,
+            tickets_count: quantity
+          }])
+          .select()
+          .single();
 
-  const cont = document.getElementById("tickets");
-  cont.innerHTML = "";
+        if (purchaseError) throw purchaseError;
 
-  data.forEach(t => {
-    const d = document.createElement("div");
-    d.className = "ticket";
-    d.textContent = t.ticket_number;
+        const purchaseId = purchase.id;
 
-    d.onclick = () => toggleTicket(t.ticket_number, d);
+        // 2️⃣ RESERVAR TICKETS
+        const { error: reserveError } = await supabase.rpc('reserve_tickets', {
+          p_raffle_id: RAFFLE_ID,
+          p_quantity: quantity,
+          p_purchase_id: purchaseId
+        });
 
-    cont.appendChild(d);
-  });
-}
+        if (reserveError) throw reserveError;
 
-// ================= SELECCIONAR =================
-function toggleTicket(num, el) {
-  if (selected.includes(num)) {
-    selected = selected.filter(n => n !== num);
-    el.classList.remove("selected");
-  } else {
-    selected.push(num);
-    el.classList.add("selected");
-  }
-
-  document.getElementById("count").textContent = selected.length;
-  document.getElementById("total").textContent = selected.length * ticketPrice;
-}
-
-// ================= COMPRAR =================
-async function comprar() {
-  if (selected.length === 0) {
-    alert("Selecciona al menos un ticket");
-    return;
-  }
-
-  const name = document.getElementById("name").value.trim();
-  const phone = document.getElementById("phone").value.trim();
-  const reference = document.getElementById("reference").value.trim();
-  const image_url = document.getElementById("image_url").value.trim();
-
-  if (!name || !phone || !reference) {
-    alert("Completa todos los datos");
-    return;
-  }
-
-  // 1️⃣ Crear compra
-  const { data: purchase, error: err1 } = await supa
-    .from("purchases_new")
-    .insert({
-      name,
-      phone,
-      reference,
-      image_url,
-      tickets_count: selected.length,
-      raffle_id: RAFFLE_ID,
-      status: "pending"
-    })
-    .select()
-    .single();
-
-  if (err1) {
-    alert("❌ Error creando compra");
-    console.error(err1);
-    return;
-  }
-
-  // 2️⃣ Reservar tickets
-  const { error: err2 } = await supa.rpc("reserve_tickets", {
-    p_raffle_id: RAFFLE_ID,
-    p_quantity: selected.length,
-    p_purchase_id: purchase.id
-  });
-
-  if (err2) {
-    alert("❌ Error reservando tickets");
-    console.error(err2);
-    return;
-  }
-
-  alert("✅ Compra enviada correctamente");
-  location.reload();
-}
-
-// ================= INIT =================
-cargarRifa();
-cargarTickets();
-</script>
-
+        msg.innerText = '✅ Compra enviada correctamente';
+      } catch (err) {
+        console.error(err);
+        msg.innerText = '❌ Error al enviar la compra';
+      } finally {
+        buyBtn.disabled = false;
+      }
+    });
+  </script>
 </body>
 </html>
