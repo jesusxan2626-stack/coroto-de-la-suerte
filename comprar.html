@@ -9,156 +9,110 @@
 
 <style>
 body {
-  font-family: Arial, sans-serif;
-  background: #0b1a33;
-  color: white;
-  margin: 0;
-  padding: 15px;
+  background:#0b1a33;
+  color:white;
+  font-family:Arial, sans-serif;
+  padding:15px;
+  margin:0;
 }
 .card {
-  background: #122654;
-  border-radius: 12px;
-  padding: 15px;
-  margin-bottom: 15px;
+  background:#122654;
+  border-radius:12px;
+  padding:15px;
+  margin-bottom:15px;
 }
-h1, h2 { text-align: center; }
-.tickets-box {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 20px;
-  font-size: 24px;
+h1,h2 { text-align:center; }
+input,button {
+  width:100%;
+  padding:12px;
+  margin-top:10px;
+  border-radius:8px;
+  border:none;
+  font-size:16px;
 }
-.tickets-box button {
-  font-size: 30px;
-  width: 60px;
-  height: 60px;
-  border: none;
-  border-radius: 10px;
+button {
+  background:#00c853;
+  font-weight:bold;
 }
 .total {
-  text-align: center;
-  font-size: 28px;
-  color: #00ff88;
-}
-input, button {
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  border-radius: 8px;
-  border: none;
-  font-size: 18px;
-}
-.btn {
-  background: #00c853;
-  color: black;
-  font-weight: bold;
+  text-align:center;
+  font-size:22px;
+  color:#00ff88;
 }
 </style>
 </head>
+
 <body>
 
 <h1>🎟 Comprar Tickets</h1>
 
 <div class="card">
-  <h2>Selecciona la cantidad</h2>
-  <div class="tickets-box">
-    <button onclick="cambiar(-1)">-</button>
-    <span id="cantidad">1</span>
-    <button onclick="cambiar(1)">+</button>
-  </div>
+  <h2>Cantidad</h2>
+  <input type="number" id="cantidad" min="1" max="50" value="1">
   <p class="total">Total: <span id="total">520</span> Bs</p>
 </div>
 
 <div class="card">
-  <h2>🏦 Datos de pago</h2>
-  <p><b>Pago móvil:</b> 04264463109</p>
-  <p><b>Cédula:</b> V-3.690.403</p>
-  <p><b>Banco:</b> Banco Venezuela</p>
-</div>
-
-<div class="card">
-  <h2>📤 Enviar comprobante</h2>
-
+  <h2>Datos</h2>
   <input id="nombre" placeholder="Nombre completo">
   <input id="telefono" placeholder="Teléfono">
   <input id="correo" placeholder="Correo (opcional)">
   <input id="referencia" placeholder="Últimos 4 dígitos">
-  <input id="comprobante" type="file" accept="image/*">
-
-  <button class="btn" id="btnEnviar" onclick="enviar()">💳 Comprar</button>
+  <input type="file" id="comprobante" accept="image/*">
+  <button onclick="enviar()">Comprar</button>
 </div>
 
 <script>
-/* ================= CONFIG ================= */
 const PRECIO = 520;
 const RAFFLE_ID = 1;
 
+// SUPABASE (FIJO)
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 const supa = supabase.createClient(supabaseUrl, supabaseKey);
 
-/* ================= LÓGICA ================= */
-let cantidad = 1;
-let enviando = false;
+const cantidadInput = document.getElementById("cantidad");
+const totalSpan = document.getElementById("total");
 
-function actualizar() {
-  document.getElementById("cantidad").innerText = cantidad;
-  document.getElementById("total").innerText = cantidad * PRECIO;
-}
+cantidadInput.oninput = () => {
+  totalSpan.innerText = cantidadInput.value * PRECIO;
+};
 
-function cambiar(v) {
-  cantidad += v;
-  if (cantidad < 1) cantidad = 1;
-  if (cantidad > 100) cantidad = 100;
-  actualizar();
-}
-actualizar();
-
-/* ================= ENVIAR ================= */
 async function enviar() {
-  if (enviando) return;
+  const nombre = nombre.value.trim();
+  const telefono = telefono.value.trim();
+  const correo = correo.value.trim();
+  const referencia = referencia.value.trim();
+  const file = comprobante.files[0];
+  const cantidad = parseInt(cantidadInput.value);
 
-  const nombre = document.getElementById("nombre").value.trim();
-  const telefono = document.getElementById("telefono").value.trim();
-  const correo = document.getElementById("correo").value.trim();
-  const referencia = document.getElementById("referencia").value.trim();
-  const comprobante = document.getElementById("comprobante").files[0];
-
-  if (!nombre || !telefono || !referencia || !comprobante) {
-    alert("⚠️ Completa todos los datos obligatorios");
+  if (!nombre || !telefono || !referencia || !file) {
+    alert("Completa todos los datos");
     return;
   }
 
   try {
-    enviando = true;
-    const btn = document.getElementById("btnEnviar");
-    btn.innerText = "⏳ Enviando...";
-    btn.disabled = true;
-
-    /* 1️⃣ Subir imagen */
-    const fileName = crypto.randomUUID() + "_" + comprobante.name;
-    const { error: upErr } = await supa
-      .storage
+    // 1️⃣ Subir imagen
+    const fileName = crypto.randomUUID() + "_" + file.name;
+    const upload = await supa.storage
       .from("comprobantes")
-      .upload(fileName, comprobante);
+      .upload(fileName, file);
 
-    if (upErr) throw upErr;
+    if (upload.error) throw upload.error;
 
-    const { data: urlData } = supa
-      .storage
+    const { data: img } = supa.storage
       .from("comprobantes")
       .getPublicUrl(fileName);
 
-    /* 2️⃣ Crear compra (TABLA CORRECTA) */
-    const { data: compra, error: errCompra } = await supa
+    // 2️⃣ Insert compra
+    const { data: compra, error } = await supa
       .from("purchases_new")
       .insert([{
         name: nombre,
         phone: telefono,
         email: correo,
         reference: referencia,
-        image_url: urlData.publicUrl,
+        image_url: img.publicUrl,
         tickets_count: cantidad,
         raffle_id: RAFFLE_ID,
         status: "pending"
@@ -166,28 +120,23 @@ async function enviar() {
       .select()
       .single();
 
-    if (errCompra) throw errCompra;
+    if (error) throw error;
 
-    /* 3️⃣ Reservar tickets */
-    const { error: errReserva } = await supa.rpc("reserve_tickets", {
+    // 3️⃣ Reservar tickets
+    const { error: err2 } = await supa.rpc("reserve_tickets", {
       p_raffle_id: RAFFLE_ID,
       p_quantity: cantidad,
       p_purchase_id: compra.id
     });
 
-    if (errReserva) throw errReserva;
+    if (err2) throw err2;
 
-    alert("✅ Compra enviada correctamente. Espera aprobación.");
-    location.reload();
+    alert("✅ Compra enviada correctamente");
+    location.href = "index.html";
 
   } catch (e) {
     console.error(e);
-    alert("❌ Error enviando la compra");
-  } finally {
-    enviando = false;
-    const btn = document.getElementById("btnEnviar");
-    btn.innerText = "💳 Comprar";
-    btn.disabled = false;
+    alert("❌ Error enviando compra");
   }
 }
 </script>
