@@ -74,20 +74,20 @@ const supa = supabase.createClient(supabaseUrl, supabaseKey);
 const cantidadInput = document.getElementById("cantidad");
 const totalSpan = document.getElementById("total");
 
-cantidadInput.oninput = () => {
+cantidadInput.addEventListener("input", () => {
   totalSpan.innerText = cantidadInput.value * PRECIO;
-};
+});
 
 async function enviar() {
-  const nombre = nombre.value.trim();
-  const telefono = telefono.value.trim();
-  const correo = correo.value.trim();
-  const referencia = referencia.value.trim();
-  const file = comprobante.files[0];
+  const nombreVal = document.getElementById("nombre").value.trim();
+  const telefonoVal = document.getElementById("telefono").value.trim();
+  const correoVal = document.getElementById("correo").value.trim();
+  const referenciaVal = document.getElementById("referencia").value.trim();
+  const file = document.getElementById("comprobante").files[0];
   const cantidad = parseInt(cantidadInput.value);
 
-  if (!nombre || !telefono || !referencia || !file) {
-    alert("Completa todos los datos");
+  if (!nombreVal || !telefonoVal || !referenciaVal || !file) {
+    alert("⚠️ Completa todos los datos");
     return;
   }
 
@@ -108,10 +108,10 @@ async function enviar() {
     const { data: compra, error } = await supa
       .from("purchases_new")
       .insert([{
-        name: nombre,
-        phone: telefono,
-        email: correo,
-        reference: referencia,
+        name: nombreVal,
+        phone: telefonoVal,
+        email: correoVal,
+        reference: referenciaVal,
         image_url: img.publicUrl,
         tickets_count: cantidad,
         raffle_id: RAFFLE_ID,
