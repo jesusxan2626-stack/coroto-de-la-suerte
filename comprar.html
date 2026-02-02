@@ -9,145 +9,209 @@
 
 <style>
 body {
-  background:#0b1a33;
-  color:white;
-  font-family:Arial, sans-serif;
-  padding:15px;
-  margin:0;
+  font-family: Arial, sans-serif;
+  background: #0b1a33;
+  color: white;
+  margin: 0;
+  padding: 15px;
 }
-.card {
-  background:#122654;
-  border-radius:12px;
-  padding:15px;
-  margin-bottom:15px;
+
+h1 {
+  text-align: center;
 }
-h1,h2 { text-align:center; }
-input,button {
-  width:100%;
-  padding:12px;
-  margin-top:10px;
-  border-radius:8px;
-  border:none;
-  font-size:16px;
+
+.tickets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(70px, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
 }
+
+.ticket {
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+  background: #1c2f5c;
+  cursor: pointer;
+}
+
+.ticket.selected {
+  background: #00c853;
+  color: black;
+}
+
+.resumen {
+  background: #122654;
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+input, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+}
+
 button {
-  background:#00c853;
-  font-weight:bold;
-}
-.total {
-  text-align:center;
-  font-size:22px;
-  color:#00ff88;
+  background: #00c853;
+  font-weight: bold;
+  cursor: pointer;
 }
 </style>
 </head>
-
 <body>
 
 <h1>🎟 Comprar Tickets</h1>
 
-<div class="card">
-  <h2>Cantidad</h2>
-  <input type="number" id="cantidad" min="1" max="50" value="1" onchange="actualizarTotal()">
-  <p class="total">Total: <span id="total">520</span> Bs</p>
-</div>
+<div class="tickets" id="tickets"></div>
 
-<div class="card">
-  <h2>Datos</h2>
-  <input id="nombre" placeholder="Nombre completo">
-  <input id="telefono" placeholder="Teléfono">
-  <input id="correo" placeholder="Correo (opcional)">
-  <input id="referencia" placeholder="Últimos 4 dígitos">
-  <input type="file" id="comprobante" accept="image/*">
+<div class="resumen">
+  <p>🎫 Tickets seleccionados: <b id="count">0</b></p>
+  <p>💰 Total: <b>$<span id="total">0</span></b></p>
 
-  <!-- onclick DIRECTO -->
-  <button type="button" onclick="enviar()">Comprar</button>
+  <input id="name" placeholder="Nombre completo">
+  <input id="phone" placeholder="Teléfono">
+  <input id="reference" placeholder="Referencia de pago">
+  <input id="image_url" placeholder="Link del comprobante (imagen)">
+
+  <button onclick="comprar()">Comprar</button>
 </div>
 
 <script>
-// ================= CONFIG =================
-const PRECIO = 520;
-const RAFFLE_ID = 1;
-
+// ================= SUPABASE =================
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
 const supa = supabase.createClient(supabaseUrl, supabaseKey);
 
-// ================= HELPERS =================
-function uid() {
-  return 'xxxxxxxxyxxx'.replace(/[xy]/g, function(c) {
-    const r = Math.random()*16|0;
-    const v = c === 'x' ? r : (r&0x3|0x8);
-    return v.toString(16);
-  });
-}
+// ================= CONFIG =================
+// ⬇️⬇️⬇️ CAMBIA SOLO ESTE NÚMERO ⬇️⬇️⬇️
+const RAFFLE_ID = 1; // ← el id BIGINT real de raffles_new
 
-function actualizarTotal() {
-  const c = document.getElementById("cantidad").value;
-  document.getElementById("total").innerText = c * PRECIO;
-}
+let ticketPrice = 0;
+let selected = [];
 
-// ================= ENVIAR =================
-async function enviar() {
-  const nombre = document.getElementById("nombre").value.trim();
-  const telefono = document.getElementById("telefono").value.trim();
-  const correo = document.getElementById("correo").value.trim();
-  const referencia = document.getElementById("referencia").value.trim();
-  const file = document.getElementById("comprobante").files[0];
-  const cantidad = parseInt(document.getElementById("cantidad").value);
+// ================= CARGAR RIFA =================
+async function cargarRifa() {
+  const { data, error } = await supa
+    .from("raffles_new")
+    .select("*")
+    .eq("id", RAFFLE_ID)
+    .single();
 
-  if (!nombre || !telefono || !referencia || !file) {
-    alert("⚠️ Completa todos los datos");
+  if (error || !data) {
+    alert("❌ Error cargando la rifa");
+    console.error(error);
     return;
   }
 
-  try {
-    // 1️⃣ Subir imagen
-    const fileName = uid() + "_" + file.name;
-    const upload = await supa.storage
-      .from("comprobantes")
-      .upload(fileName, file);
-
-    if (upload.error) throw upload.error;
-
-    const { data: img } = supa.storage
-      .from("comprobantes")
-      .getPublicUrl(fileName);
-
-    // 2️⃣ Insertar compra
-    const { data: compra, error } = await supa
-      .from("purchases_new")
-      .insert([{
-        name: nombre,
-        phone: telefono,
-        email: correo,
-        reference: referencia,
-        image_url: img.publicUrl,
-        tickets_count: cantidad,
-        raffle_id: RAFFLE_ID,
-        status: "pending"
-      }])
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    // 3️⃣ Reservar tickets
-    const { error: err2 } = await supa.rpc("reserve_tickets", {
-      p_raffle_id: RAFFLE_ID,
-      p_quantity: cantidad,
-      p_purchase_id: compra.id
-    });
-
-    if (err2) throw err2;
-
-    alert("✅ Compra enviada correctamente");
-    location.href = "index.html";
-
-  } catch (e) {
-    alert("❌ ERROR:\n" + (e.message || JSON.stringify(e)));
-  }
+  ticketPrice = Number(data.price);
 }
+
+// ================= CARGAR TICKETS =================
+async function cargarTickets() {
+  const { data, error } = await supa
+    .from("tickets")
+    .select("id, ticket_number")
+    .eq("raffle_id", RAFFLE_ID)
+    .eq("status", "available")
+    .order("ticket_number");
+
+  if (error) {
+    alert("❌ Error cargando tickets");
+    console.error(error);
+    return;
+  }
+
+  const cont = document.getElementById("tickets");
+  cont.innerHTML = "";
+
+  data.forEach(t => {
+    const d = document.createElement("div");
+    d.className = "ticket";
+    d.textContent = t.ticket_number;
+
+    d.onclick = () => toggleTicket(t.ticket_number, d);
+
+    cont.appendChild(d);
+  });
+}
+
+// ================= SELECCIONAR =================
+function toggleTicket(num, el) {
+  if (selected.includes(num)) {
+    selected = selected.filter(n => n !== num);
+    el.classList.remove("selected");
+  } else {
+    selected.push(num);
+    el.classList.add("selected");
+  }
+
+  document.getElementById("count").textContent = selected.length;
+  document.getElementById("total").textContent = selected.length * ticketPrice;
+}
+
+// ================= COMPRAR =================
+async function comprar() {
+  if (selected.length === 0) {
+    alert("Selecciona al menos un ticket");
+    return;
+  }
+
+  const name = document.getElementById("name").value.trim();
+  const phone = document.getElementById("phone").value.trim();
+  const reference = document.getElementById("reference").value.trim();
+  const image_url = document.getElementById("image_url").value.trim();
+
+  if (!name || !phone || !reference) {
+    alert("Completa todos los datos");
+    return;
+  }
+
+  // 1️⃣ Crear compra
+  const { data: purchase, error: err1 } = await supa
+    .from("purchases_new")
+    .insert({
+      name,
+      phone,
+      reference,
+      image_url,
+      tickets_count: selected.length,
+      raffle_id: RAFFLE_ID,
+      status: "pending"
+    })
+    .select()
+    .single();
+
+  if (err1) {
+    alert("❌ Error creando compra");
+    console.error(err1);
+    return;
+  }
+
+  // 2️⃣ Reservar tickets
+  const { error: err2 } = await supa.rpc("reserve_tickets", {
+    p_raffle_id: RAFFLE_ID,
+    p_quantity: selected.length,
+    p_purchase_id: purchase.id
+  });
+
+  if (err2) {
+    alert("❌ Error reservando tickets");
+    console.error(err2);
+    return;
+  }
+
+  alert("✅ Compra enviada correctamente");
+  location.reload();
+}
+
+// ================= INIT =================
+cargarRifa();
+cargarTickets();
 </script>
 
 </body>
