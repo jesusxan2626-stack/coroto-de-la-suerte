@@ -20,11 +20,11 @@ h1 {
   text-align: center;
 }
 
-.box {
+.card {
   background: #122654;
-  padding: 15px;
   border-radius: 12px;
-  margin-bottom: 15px;
+  padding: 15px;
+  margin-top: 15px;
 }
 
 input, button {
@@ -33,7 +33,7 @@ input, button {
   margin-top: 10px;
   border-radius: 8px;
   border: none;
-  font-size: 18px;
+  font-size: 16px;
 }
 
 button {
@@ -41,22 +41,25 @@ button {
   font-weight: bold;
 }
 
-.resultado {
-  background: #122654;
-  padding: 15px;
-  border-radius: 12px;
-  margin-top: 15px;
+.volver {
+  background: #777;
 }
-.volver { background:#777; }
 </style>
 </head>
 <body>
 
-<h1>🔍 Buscar Ticket</h1>
+<script>
+// 🔐 PROTECCIÓN LOGIN
+if (localStorage.getItem("admin_auth") !== "ok") {
+  location.href = "login.html";
+}
+</script>
+
+<h1>🔎 Buscar Ticket</h1>
 
 <button class="volver" onclick="volver()">⬅️ Volver al menú</button>
 
-<div class="box">
+<div class="card">
   <input id="numero" placeholder="Número de ticket">
   <button onclick="buscar()">Buscar</button>
 </div>
@@ -64,11 +67,6 @@ button {
 <div id="resultado"></div>
 
 <script>
-// 🔐 PROTECCIÓN LOGIN
-if (localStorage.getItem("admin_auth") !== "ok") {
-  location.href = "login.html";
-}
-
 // ================= SUPABASE =================
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
@@ -77,41 +75,50 @@ const supa = supabase.createClient(supabaseUrl, supabaseKey);
 // ================= BUSCAR =================
 async function buscar() {
   const num = document.getElementById("numero").value.trim();
-  if (!num) return alert("Escribe un número");
+  const div = document.getElementById("resultado");
+  div.innerHTML = "";
 
-  const { data: ticket, error } = await supa
+  if (!num) {
+    alert("Ingresa un número");
+    return;
+  }
+
+  const { data, error } = await supa
     .from("tickets")
-    .select("id, ticket_number, status, purchase_id, purchases(*)")
+    .select(`
+      ticket_number,
+      status,
+      purchases (
+        name,
+        phone,
+        email,
+        reference,
+        status
+      )
+    `)
     .eq("ticket_number", num)
     .single();
 
-  if (error || !ticket) {
-    document.getElementById("resultado").innerHTML = "<p>❌ Ticket no encontrado</p>";
+  if (error || !data) {
+    div.innerHTML = "<p style='text-align:center'>❌ Ticket no encontrado</p>";
     return;
   }
 
-  if (ticket.status === "available") {
-    document.getElementById("resultado").innerHTML = `
-      <div class="resultado">
-        <p>🎟 Ticket: ${ticket.ticket_number}</p>
-        <p>📌 Estado: DISPONIBLE</p>
-      </div>
-    `;
-    return;
-  }
+  div.innerHTML = `
+    <div class="card">
+      <p><b>🎟 Ticket:</b> ${data.ticket_number}</p>
+      <p><b>📌 Estado:</b> ${data.status}</p>
 
-  const c = ticket.purchases;
-
-  document.getElementById("resultado").innerHTML = `
-    <div class="resultado">
-      <p><b>🎟 Ticket:</b> ${ticket.ticket_number}</p>
-      <p><b>📌 Estado:</b> ${ticket.status}</p>
-      <hr>
-      <p><b>👤 Nombre:</b> ${c.name}</p>
-      <p><b>📞 Teléfono:</b> ${c.phone}</p>
-      <p><b>📧 Email:</b> ${c.email || ""}</p>
-      <p><b>💳 Referencia:</b> ${c.reference}</p>
-      <p><b>🧾 Estado compra:</b> ${c.status}</p>
+      ${
+        data.purchases ? `
+        <hr>
+        <p><b>👤 Nombre:</b> ${data.purchases.name}</p>
+        <p><b>📞 Teléfono:</b> ${data.purchases.phone}</p>
+        <p><b>📧 Email:</b> ${data.purchases.email || ""}</p>
+        <p><b>💳 Referencia:</b> ${data.purchases.reference}</p>
+        <p><b>🧾 Compra:</b> ${data.purchases.status}</p>
+        ` : "<p>Disponible (sin comprador)</p>"
+      }
     </div>
   `;
 }
