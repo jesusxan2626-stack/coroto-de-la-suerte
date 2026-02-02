@@ -59,7 +59,9 @@ button {
   <input id="correo" placeholder="Correo (opcional)">
   <input id="referencia" placeholder="Últimos 4 dígitos">
   <input type="file" id="comprobante" accept="image/*">
-  <button onclick="enviar()">Comprar</button>
+
+  <!-- IMPORTANTE: type="button" -->
+  <button type="button" id="btnComprar">Comprar</button>
 </div>
 
 <script>
@@ -73,12 +75,19 @@ const supa = supabase.createClient(supabaseUrl, supabaseKey);
 
 const cantidadInput = document.getElementById("cantidad");
 const totalSpan = document.getElementById("total");
+const btnComprar = document.getElementById("btnComprar");
 
 cantidadInput.addEventListener("input", () => {
   totalSpan.innerText = cantidadInput.value * PRECIO;
 });
 
+// 🔥 ENGANCHE DIRECTO DEL BOTÓN
+btnComprar.addEventListener("click", enviar);
+
 async function enviar() {
+  // PRUEBA RÁPIDA (NO BORRAR)
+  alert("Botón funciona");
+
   const nombreVal = document.getElementById("nombre").value.trim();
   const telefonoVal = document.getElementById("telefono").value.trim();
   const correoVal = document.getElementById("correo").value.trim();
