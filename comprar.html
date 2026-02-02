@@ -1,66 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Comprar Tickets</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+body {
+  background: #0b1a33;
+  color: white;
+  font-family: Arial, sans-serif;
+  padding: 15px;
+}
+
+.card {
+  background: #122654;
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 15px;
+}
+
+input, button {
+  width: 100%;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 8px;
+  border: none;
+  font-size: 16px;
+}
+
+button {
+  background: #00c853;
+  font-weight: bold;
+  color: #000;
+}
+
+.total {
+  text-align: center;
+  font-size: 20px;
+  color: #00e676;
+  margin-bottom: 10px;
+}
+</style>
+</head>
+<body>
+
+<h2 style="text-align:center">🎟 Comprar Tickets</h2>
+
+<div class="card">
+  <p><b>Precio por ticket:</b> 20 Bs</p>
+
+  <input type="number" id="cantidad" placeholder="Cantidad de tickets" min="1">
+
+  <div class="total" id="total">Total: 0 Bs</div>
+</div>
+
+<div class="card">
+  <h3>🏦 Datos de pago</h3>
+  <p>Pago móvil: <b>04264463109</b></p>
+  <p>Cédula: <b>V-3.690.403</b></p>
+  <p>Banco: <b>Banco Venezuela</b></p>
+</div>
+
+<div class="card">
+  <input type="text" id="nombre" placeholder="Nombre completo">
+  <input type="tel" id="telefono" placeholder="Teléfono">
+  <input type="email" id="email" placeholder="Correo (opcional)">
+  <input type="text" id="referencia" placeholder="Referencia de pago">
+
+  <input type="file" id="comprobante" accept="image/*">
+
+  <button onclick="enviarCompra()">💳 Comprar</button>
+</div>
+
 <script>
+// ================= SUPABASE =================
 const supabaseUrl = "https://hedwnykwnhrbnwfohntr.supabase.co";
 const supabaseKey = "sb_publishable_6otGMCrLs0wEi2_X5FwEmw__DDh9kRM";
-const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
 
+// ================= VARIABLES =================
+const PRECIO = 20;
+const RAFFLE_ID = 1;
+
+// ================= TOTAL =================
+document.getElementById("cantidad").addEventListener("input", () => {
+  const cant = Number(document.getElementById("cantidad").value) || 0;
+  document.getElementById("total").innerText = `Total: ${cant * PRECIO} Bs`;
+});
+
+// ================= ENVIAR COMPRA =================
 async function enviarCompra() {
   try {
-    const nombre = document.getElementById("nombre").value;
-    const telefono = document.getElementById("telefono").value;
-    const email = document.getElementById("email").value;
-    const referencia = document.getElementById("referencia").value;
-    const cantidad = parseInt(document.getElementById("cantidad").value);
+    const cantidad = Number(document.getElementById("cantidad").value);
+    const nombre = document.getElementById("nombre").value.trim();
+    const telefono = document.getElementById("telefono").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const referencia = document.getElementById("referencia").value.trim();
     const file = document.getElementById("comprobante").files[0];
 
-    if (!nombre || !telefono || !referencia || !cantidad || !file) {
-      alert("Completa todos los campos");
+    if (!cantidad || !nombre || !telefono || !referencia || !file) {
+      alert("⚠️ Completa todos los campos obligatorios");
       return;
     }
 
-    // 📤 Subir imagen
-    const fileName = `${Date.now()}-${file.name}`;
-    const { error: uploadError } = await supabase
-      .storage
+    // 1️⃣ Reservar tickets
+    const { data: reserva, error: errReserva } = await supabase.rpc(
+      "reserve_tickets",
+      {
+        p_raffle_id: RAFFLE_ID,
+        p_quantity: cantidad,
+        p_price: PRECIO
+      }
+    );
+
+    if (errReserva) {
+      alert("❌ Error reservando tickets");
+      console.error(errReserva);
+      return;
+    }
+
+    const purchase_id = reserva.purchase_id;
+
+    // 2️⃣ Subir comprobante
+    const fileName = `comp_${purchase_id}_${Date.now()}.jpg`;
+
+    const { error: errUpload } = await supabase.storage
       .from("comprobantes")
       .upload(fileName, file);
 
-    if (uploadError) throw uploadError;
+    if (errUpload) {
+      alert("❌ Error subiendo comprobante");
+      console.error(errUpload);
+      return;
+    }
 
-    const image_url = `${supabaseUrl}/storage/v1/object/public/comprobantes/${fileName}`;
+    const { data: publicUrl } = supabase.storage
+      .from("comprobantes")
+      .getPublicUrl(fileName);
 
-    // 🧾 Crear compra
-    const { data: compra, error } = await supabase
+    // 3️⃣ Guardar datos compra
+    const { error: errUpdate } = await supabase
       .from("purchases")
-      .insert([{
+      .update({
         name: nombre,
         phone: telefono,
         email: email,
         reference: referencia,
-        tickets_count: cantidad,
-        status: "pending",
-        image_url
-      }])
-      .select()
-      .single();
+        image_url: publicUrl.publicUrl
+      })
+      .eq("id", purchase_id);
 
-    if (error) throw error;
+    if (errUpdate) {
+      alert("❌ Error guardando compra");
+      console.error(errUpdate);
+      return;
+    }
 
-    // 🎟 Reservar tickets
-    const { error: reserveError } = await supabase.rpc("reserve_tickets", {
-      p_raffle_id: 1,
-      p_quantity: cantidad,
-      p_order_id: compra.id
-    });
-
-    if (reserveError) throw reserveError;
-
-    alert("✅ Compra enviada correctamente");
+    alert("✅ Compra enviada. Espera aprobación.");
     location.reload();
 
-  } catch (err) {
-    console.error(err);
-    alert("❌ Error enviando la compra");
+  } catch (e) {
+    alert("❌ Error inesperado");
+    console.error(e);
   }
 }
 </script>
+
+</body>
+</html>
